@@ -41,8 +41,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If logged in and trying to access auth pages, redirect to chat
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  // If logged in and trying to access landing or auth pages, redirect to chat
+  if (user && (pathname === "/" || pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/chat";
     return NextResponse.redirect(url);

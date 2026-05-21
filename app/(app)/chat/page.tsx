@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useDrawer } from "@/lib/useDrawer";
 
 interface Conversation { id: string; title: string; updated_at: string }
 interface Message { id: string; role: "user" | "assistant"; content: string }
@@ -26,8 +27,12 @@ export default function ChatPage() {
   const [showTransit, setShowTransit] = useState(true);
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPlan, setPaywallPlan] = useState("annual");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const closeSidebar = () => setSidebarOpen(false);
+  useDrawer(sidebarOpen, closeSidebar);
 
   useEffect(() => {
     (async () => {
@@ -124,6 +129,7 @@ export default function ChatPage() {
     setConversations(prev => [conversation, ...prev]);
     setActiveId(conversation.id);
     setMessages([]);
+    closeSidebar();
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -168,13 +174,17 @@ export default function ChatPage() {
         </div>
       )}
 
+      {sidebarOpen && (
+        <div className="drawer-backdrop" onClick={closeSidebar} aria-hidden="true" />
+      )}
+
       {/* Sidebar */}
-      <div className="chat-sidebar">
+      <div className={`chat-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-top">
           <button className="btn btn-outline btn-sm btn-full" onClick={handleNewConversation}>+ New conversation</button>
         </div>
         <div className="sidebar-section">Today&apos;s sky</div>
-        <Link href="/briefing" className="sidebar-item">
+        <Link href="/briefing" className="sidebar-item" onClick={closeSidebar}>
           <span className="sidebar-item-icon">🌙</span>
           <span className="sidebar-item-text">Daily briefing</span>
           <span className="sidebar-item-badge">New</span>
@@ -184,27 +194,32 @@ export default function ChatPage() {
           <div
             key={c.id}
             className={`sidebar-item ${c.id === activeId ? "active" : ""}`}
-            onClick={() => setActiveId(c.id)}
+            onClick={() => { setActiveId(c.id); closeSidebar(); }}
           >
             <span className="sidebar-item-icon">💬</span>
             <span className="sidebar-item-text">{c.title}</span>
           </div>
         ))}
         <div className="sidebar-section">People</div>
-        <Link href="/relationships" className="sidebar-item">
+        <Link href="/relationships" className="sidebar-item" onClick={closeSidebar}>
           <span className="sidebar-item-icon">💕</span>
           <span className="sidebar-item-text">Relationships</span>
         </Link>
         <div style={{ flex: 1 }} />
-        <Link href="/settings" className="sidebar-item">
-          <span className="sidebar-item-icon">⚙️</span>
-          <span className="sidebar-item-text">Settings</span>
-        </Link>
       </div>
 
       {/* Main */}
       <div className="chat-main">
         <div className="chat-header">
+          <button
+            type="button"
+            className="chat-sidebar-burger"
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label={sidebarOpen ? "Close conversations" : "Open conversations"}
+            aria-expanded={sidebarOpen}
+          >
+            <span className="burger-icon" aria-hidden="true"><span /><span /><span /></span>
+          </button>
           <div className="chat-header-info">
             <div className="chat-header-title">{activeConv?.title ?? "Your reading"}</div>
             <div className="chat-header-sub">Personalized to your natal chart · live transit context</div>

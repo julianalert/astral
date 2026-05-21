@@ -1,0 +1,46 @@
+---
+description: Mobile responsive UI conventions for Astral
+alwaysApply: true
+---
+
+# Mobile Responsive UI
+
+Astral uses custom CSS in `app/globals.css` — no Tailwind.
+
+## Breakpoints
+
+| Token | Value | Use |
+|-------|-------|-----|
+| `--bp-tablet` | 1024px | Sidebars → drawers; inline columns collapse |
+| `--bp-mobile` | 768px | Grids stack, reduced padding, typography tweaks |
+
+- `@media (max-width: 1024px)` — drawer behavior (tablet + phone)
+- `@media (max-width: 768px)` — layout stacking
+
+## Sidebars & Drawers
+
+1. **No persistent side columns below 1024px** — use off-canvas drawers with backdrop overlay.
+2. Close drawers on: backdrop tap, Escape key, navigation (link click).
+3. Lock body scroll when any drawer is open: `document.body.style.overflow = 'hidden'`.
+4. Reuse shared classes: `.drawer-backdrop`, `.drawer`, `.drawer.open`, `.nav-burger`, `.burger-icon`.
+
+## Two burger menus on chat
+
+- **AppNav burger** (nav bar): Chat / Today / People / Profile / Sign out
+- **Chat header burger**: conversations, New conversation, Daily briefing, Relationships
+
+## Touch & spacing
+
+- Interactive controls ≥ 44×44px on mobile.
+- Content padding: 16px mobile, 24–28px desktop.
+- Message bubbles: ~85–90% max-width on mobile.
+
+## Layout rules
+
+- Grids stack to 1 column at 768px: `.ob-row`, `.choice-grid`, `.plans`, `.comparison`.
+- Use `100dvh` (not `100vh`) for full-viewport shells (`.app`, landing hero).
+- No horizontal overflow — stack or `overflow-x: auto`, never clip off-screen.
+
+## Scope
+
+Drawer open/close is local React state only — no new routes, APIs, or features.

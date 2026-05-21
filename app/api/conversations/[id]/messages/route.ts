@@ -113,7 +113,7 @@ export async function POST(
 
   // Stream from Claude
   const result = await streamText({
-    model: anthropic("claude-sonnet-4-5"),
+    model: anthropic("claude-sonnet-4-6"),
     system: systemPrompt,
     messages: aiMessages,
     maxOutputTokens: 600,

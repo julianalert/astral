@@ -44,8 +44,10 @@ export default function OnboardingPage() {
     });
     setLoading(false);
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Could not compute chart. Check the birth location.");
+      const text = await res.text();
+      let msg = "Could not compute chart. Check the birth location.";
+      try { msg = JSON.parse(text).error ?? msg; } catch {}
+      setError(msg);
       return;
     }
     setStep(1);
@@ -54,6 +56,8 @@ export default function OnboardingPage() {
   const handleContextStep = async () => {
     if (focus === null) { setError("Pick a focus area"); return; }
     setError("");
+    // Go to step 3 immediately so the typing animation shows while we wait
+    setStep(2);
     setLoading(true);
     const res = await fetch("/api/onboarding/context", {
       method: "POST",
@@ -65,13 +69,16 @@ export default function OnboardingPage() {
     });
     setLoading(false);
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Something went wrong generating your first reading.");
+      const text = await res.text();
+      let msg = "Something went wrong generating your first reading.";
+      try { msg = JSON.parse(text).error ?? msg; } catch {}
+      // Go back to step 1 so they can try again
+      setStep(1);
+      setError(msg);
       return;
     }
     const data = await res.json();
     setFirstMessage(data.message);
-    setStep(2);
   };
 
   return (
@@ -153,7 +160,7 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div className="screen">
             <div className="ob-eyebrow">Step 3 of 3</div>
-            <h2 className="ob-title"><em>Astral</em> is ready for you</h2>
+            <h2 className="ob-title"><em>Astral</em> is reading your chart</h2>
             <p className="ob-sub">Your natal chart has been computed. Here&apos;s your opening message.</p>
 
             <div className="first-msg-wrap">
@@ -164,12 +171,18 @@ export default function OnboardingPage() {
                   <div className="first-msg-time">Just now</div>
                 </div>
               </div>
-              <div className="first-msg-text">{firstMessage}</div>
+              {loading ? (
+                <div className="typing-dots"><span /><span /><span /></div>
+              ) : (
+                <div className="first-msg-text">{firstMessage}</div>
+              )}
             </div>
 
-            <button className="btn btn-gold" onClick={() => router.push("/chat")}>
-              Open my reading →
-            </button>
+            {!loading && (
+              <button className="btn btn-gold" onClick={() => router.push("/chat")}>
+                Open my reading →
+              </button>
+            )}
           </div>
         )}
       </div>
