@@ -8,13 +8,6 @@ import { useDrawer } from "@/lib/useDrawer";
 interface Conversation { id: string; title: string; updated_at: string }
 interface Message { id: string; role: "user" | "assistant"; content: string }
 
-const CHIPS = [
-  "What's the most important transit for me this month?",
-  "How does my chart handle conflict?",
-  "What does my Venus placement say about love?",
-  "Best timing for a big decision right now?",
-];
-
 export default function ChatPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -28,6 +21,7 @@ export default function ChatPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPlan, setPaywallPlan] = useState("annual");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -36,13 +30,19 @@ export default function ChatPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("conversations")
-        .select("id, title, updated_at")
-        .order("updated_at", { ascending: false });
+      const [convRes, promptsRes] = await Promise.all([
+        supabase.from("conversations").select("id, title, updated_at").order("updated_at", { ascending: false }),
+        fetch("/api/chat/suggested-prompts"),
+      ]);
+      const { data } = convRes;
       if (!data?.length) { router.push("/onboarding"); return; }
       setConversations(data);
       setActiveId(data[0].id);
+
+      if (promptsRes.ok) {
+        const { prompts } = await promptsRes.json() as { prompts: string[] };
+        if (Array.isArray(prompts)) setSuggestedPrompts(prompts);
+      }
     })();
   }, []);
 
@@ -104,6 +104,23 @@ export default function ChatPage() {
         setMessages(prev => prev.map(m =>
           m.id === assistantId ? { ...m, content: m.content + chunk } : m
         ));
+      }
+      // Refresh conversation list only when this was the first user message
+      // (title auto-generation happens server-side, so we need to pull the new title)
+      const wasFirstMessage = !messages.some(m => m.role === "user");
+      if (wasFirstMessage) {
+        const { data: updatedConvs } = await supabase
+          .from("conversations")
+          .select("id, title, updated_at")
+          .order("updated_at", { ascending: false });
+        if (updatedConvs) setConversations(updatedConvs);
+      } else {
+        // Just bump the updated_at timestamp in local state for sort ordering
+        setConversations(prev =>
+          prev.map(c =>
+            c.id === activeId ? { ...c, updated_at: new Date().toISOString() } : c
+          ).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+        );
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
@@ -260,11 +277,13 @@ export default function ChatPage() {
           <div ref={messagesEnd} />
         </div>
 
-        <div className="suggested-prompts">
-          {CHIPS.map((c, i) => (
-            <div key={i} className="prompt-chip" onClick={() => setInput(c)}>{c}</div>
-          ))}
-        </div>
+        {suggestedPrompts.length > 0 && !messages.some(m => m.role === "user") && (
+          <div className="suggested-prompts">
+            {suggestedPrompts.map((c, i) => (
+              <div key={i} className="prompt-chip" onClick={() => sendMessage(c)}>{c}</div>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="chat-input-area">

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
 import { buildSystemPrompt, type MemoryEntry } from "@/lib/ai/systemPrompt";
+import { extractAndStoreMemories } from "@/lib/ai/memoryExtract";
 import type { NatalChart } from "@/lib/astrology/chart";
 
 export async function GET(
@@ -68,6 +69,22 @@ export async function POST(
     return NextResponse.json({ error: "No user message" }, { status: 400 });
   }
 
+  // Count existing messages to determine auto-title and memory trigger
+  const { count: existingCount } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", params.id);
+
+  // Auto-title: if only the initial AI greeting exists (count === 1), use the first user message as title
+  if ((existingCount ?? 0) === 1) {
+    const words = lastMessage.content.trim().split(/\s+/).slice(0, 8).join(" ");
+    const title = words.length < lastMessage.content.trim().length ? `${words}…` : words;
+    await supabase
+      .from("conversations")
+      .update({ title })
+      .eq("id", params.id);
+  }
+
   // Save user message to Supabase
   await supabase.from("messages").insert({
     conversation_id: params.id,
@@ -123,6 +140,25 @@ export async function POST(
         role: "assistant",
         content: text,
       });
+
+      // Trigger memory extraction every 5 assistant messages (at 5, 10, 15…)
+      const { count: totalCount } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", params.id);
+
+      if (totalCount && totalCount >= 5 && totalCount % 5 === 0) {
+        // Fetch full conversation for extraction (fire and forget)
+        const { data: allMsgs } = await supabase
+          .from("messages")
+          .select("role, content")
+          .eq("conversation_id", params.id)
+          .order("created_at", { ascending: true });
+
+        if (allMsgs) {
+          void extractAndStoreMemories(params.id, user.id, allMsgs);
+        }
+      }
     },
   });
 

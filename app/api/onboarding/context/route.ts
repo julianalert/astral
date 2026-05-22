@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import { buildFirstMessagePrompt } from "@/lib/ai/systemPrompt";
+import { sendWelcomeEmail } from "@/lib/email/send";
 import type { NatalChart } from "@/lib/astrology/chart";
 
 export async function POST(request: Request) {
@@ -59,10 +60,19 @@ export async function POST(request: Request) {
       content: text,
     });
 
-    // Mark onboarding complete on profile
+    // Mark onboarding complete and advance email sequence to step 1
     await supabase
       .from("profiles")
-      .upsert({ id: user.id, onboarding_completed: true });
+      .upsert({ id: user.id, onboarding_completed: true, email_sequence_step: 1 });
+
+    // Send welcome email (fire and forget — don't block the response)
+    if (user.email) {
+      void sendWelcomeEmail({
+        to: user.email,
+        userName,
+        sunSign: chart.sun.sign,
+      }).catch(err => console.error("[email] welcome send failed:", err));
+    }
 
     return NextResponse.json({ conversationId: conversation.id, message: text });
   } catch (err) {
