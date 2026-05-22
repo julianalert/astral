@@ -1,11 +1,11 @@
 ---
-description: Mobile responsive UI conventions for Astral
+description: Mobile responsive UI conventions for Seraphova
 alwaysApply: true
 ---
 
 # Mobile Responsive UI
 
-Astral uses custom CSS in `app/globals.css` — no Tailwind.
+Seraphova uses custom CSS in `app/globals.css` — no Tailwind.
 
 ## Breakpoints
 

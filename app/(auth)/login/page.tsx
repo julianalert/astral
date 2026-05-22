@@ -36,7 +36,7 @@ export default function LoginPage() {
         <div className="auth-screen screen">
           <div className="auth-card">
             <div className="auth-logo">
-              <div className="auth-logo-mark">✦ ASTRAL</div>
+              <div className="auth-logo-mark">✦ SERAPHOVA</div>
             </div>
             <h2 className="auth-title">Welcome back</h2>
             <p className="auth-sub">Your stars are in motion.</p>

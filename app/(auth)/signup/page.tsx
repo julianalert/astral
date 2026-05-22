@@ -42,7 +42,7 @@ export default function SignupPage() {
         <div className="auth-screen screen">
           <div className="auth-card">
             <div className="auth-logo">
-              <div className="auth-logo-mark">✦ ASTRAL</div>
+              <div className="auth-logo-mark">✦ SERAPHOVA</div>
             </div>
             <div style={{ textAlign: "center", marginBottom: "16px" }}>
               <div className="trial-badge">✦ 3 days free · no card required</div>

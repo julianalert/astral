@@ -63,7 +63,7 @@ export default function AppNav({ userEmail }: { userEmail: string }) {
             <BurgerIcon />
           </button>
           <Link href="/chat" className="nav-logo">
-            <span>✦</span> ASTRAL
+            <span>✦</span> SERAPHOVA
           </Link>
         </div>
         <div className="nav-tabs">
@@ -124,7 +124,7 @@ export default function AppNav({ userEmail }: { userEmail: string }) {
 
       <div className={`nav-drawer drawer ${menuOpen ? "open" : ""}`} aria-hidden={!menuOpen}>
         <div className="nav-drawer-header">
-          <div className="nav-drawer-logo"><span>✦</span> ASTRAL</div>
+          <div className="nav-drawer-logo"><span>✦</span> SERAPHOVA</div>
         </div>
         {TABS.map((t) => (
           <Link

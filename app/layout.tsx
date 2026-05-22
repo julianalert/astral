@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Astral — Your Chart Knows You",
+  title: "Seraphova — Your Chart Knows You",
   description: "An AI that knows your natal chart as deeply as you know yourself.",
 };
 

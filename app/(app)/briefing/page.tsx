@@ -12,7 +12,7 @@ export default function BriefingPage() {
 
         <div className="briefing-content">
           <p>Your daily transit briefing will be generated here each morning — a 3–5 sentence reading grounded in your chart and today&apos;s sky, written personally for you.</p>
-          <p>For now, ask Astral directly in the chat about today&apos;s transits and what they mean for your chart.</p>
+          <p>For now, ask Seraphova directly in the chat about today&apos;s transits and what they mean for your chart.</p>
         </div>
 
         <div className="briefing-cta">

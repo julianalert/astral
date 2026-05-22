@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seraphova — The stars, translated for you</title>
+  <meta name="description" content="An AI that knows your natal chart as well as you know yourself. Not generic horoscopes — real, personal insight in conversation." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    a { text-decoration: none; color: inherit; }
+
+    :root {
+      --night:    #08090f;
+      --deep:     #0d0f1a;
+      --void:     #111422;
+      --card:     #161929;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --gold:     #c9a84c;
+      --gold2:    #e8c97a;
+      --gold-dim: rgba(201,168,76,0.15);
+      --gold-glow:rgba(201,168,76,0.06);
+      --text:     #e8e4da;
+      --muted:    rgba(232,228,218,0.45);
+      --muted2:   rgba(232,228,218,0.25);
+      --accent:   #7b6fa0;
+      --r: 8px;
+      --r2: 14px;
+      --r3: 20px;
+      --max: 1100px;
+    }
+
+    html { scroll-behavior: smooth; }
+    html, body { min-height: 100%; background: var(--night); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; overflow-x: hidden; }
+    ::selection { background: rgba(201,168,76,0.25); color: var(--text); }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform: none; } }
+    @keyframes slowSpin { to { transform:rotate(360deg); } }
+    @keyframes counterSpin { to { transform:rotate(-360deg); } }
+    @keyframes bob { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(6px); } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    .stagger-1 { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) 0.05s both; }
+    .stagger-2 { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) 0.12s both; }
+    .stagger-3 { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) 0.19s both; }
+    .stagger-4 { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) 0.26s both; }
+    .stagger-5 { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) 0.33s both; }
+
+    /* ── CANVAS ── */
+    .stars-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.6; }
+
+    /* ── BUTTONS ── */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:11px 24px; border-radius:var(--r); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:all 0.2s; border:none; letter-spacing:0.02em; text-decoration:none; }
+    .btn-gold { background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0d0f1a; }
+    .btn-gold:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(201,168,76,0.3); }
+    .btn-outline { background:transparent; border:1px solid var(--border2); color:var(--text); }
+    .btn-outline:hover { border-color:var(--gold); color:var(--gold); }
+    .btn-ghost { background:transparent; color:var(--muted); border:none; padding:8px 12px; }
+    .btn-ghost:hover { color:var(--text); }
+    .btn-lg { padding:14px 32px; font-size:15px; border-radius:var(--r2); }
+    .btn-xl { padding:16px 40px; font-size:16px; border-radius:var(--r2); }
+
+    /* ── LANDING NAV ── */
+    .landing-nav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; justify-content:space-between; padding:0 40px; height:64px; backdrop-filter:blur(24px); border-bottom:1px solid var(--border); transition:background 0.2s; background:rgba(8,9,15,0.75); }
+    .landing-nav.scrolled { background:rgba(8,9,15,0.92); }
+    .landing-nav-logo { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:400; letter-spacing:0.16em; color:var(--gold2); display:flex; align-items:center; gap:9px; text-decoration:none; }
+    .landing-nav-mark { font-size:16px; opacity:0.8; }
+    .landing-nav-links { display:flex; align-items:center; gap:28px; }
+    .landing-nav-links a { font-size:14px; color:var(--muted); text-decoration:none; transition:color 0.2s; }
+    .landing-nav-links a:hover { color:var(--text); }
+    .landing-nav-ctas { display:flex; align-items:center; gap:10px; }
+    .landing-nav-burger { display:none; align-items:center; justify-content:center; min-width:44px; min-height:44px; padding:0; background:none; border:none; cursor:pointer; border-radius:var(--r); flex-shrink:0; }
+    .landing-nav-burger:hover { background:var(--void); }
+    .burger-icon { display:flex; flex-direction:column; gap:5px; width:18px; }
+    .burger-icon span { display:block; height:2px; background:var(--text); border-radius:1px; transition:transform 0.2s; }
+
+    /* ── DRAWERS ── */
+    .drawer-backdrop { position:fixed; inset:0; background:rgba(8,9,15,0.75); backdrop-filter:blur(8px); z-index:140; animation:fadeIn 0.2s ease; display:none; }
+    .drawer-backdrop.visible { display:block; }
+    .drawer { position:fixed; top:0; left:0; bottom:0; width:min(280px,85vw); z-index:150; transform:translateX(-100%); transition:transform 0.25s ease; overflow-y:auto; }
+    .drawer.open { transform:translateX(0); }
+    .nav-drawer { background:rgba(13,15,26,0.98); border-right:1px solid var(--border); padding:20px 0; display:flex; flex-direction:column; }
+    .nav-drawer-header { padding:8px 20px 16px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+    .nav-drawer-logo { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:400; letter-spacing:0.12em; color:var(--gold2); display:flex; align-items:center; gap:8px; }
+    .nav-drawer-item { display:flex; align-items:center; gap:12px; padding:12px 20px; font-size:14px; color:var(--muted); cursor:pointer; transition:all 0.15s; border:none; background:none; width:100%; text-align:left; font-family:'DM Sans',sans-serif; text-decoration:none; }
+    .nav-drawer-item:hover { background:var(--void); color:var(--text); }
+    .nav-drawer-divider { height:1px; background:var(--border); margin:8px 16px; }
+
+    /* ── LAYOUT ── */
+    .landing-wrap { max-width:var(--max); margin:0 auto; padding:0 32px; position:relative; z-index:1; }
+    .landing-section { position:relative; z-index:1; padding:100px 0; }
+    .landing-section-sm { padding:60px 0; }
+    .center { text-align:center; }
+    .center .section-sub { margin:0 auto; }
+    .section-divider { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--border2),transparent); position:relative; z-index:1; }
+
+    /* ── HERO ── */
+    .landing-hero { min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:120px 32px 80px; position:relative; z-index:1; }
+    .hero-orbit { width:130px; height:130px; border:1px solid rgba(201,168,76,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; margin:0 auto 32px; animation:slowSpin 40s linear infinite; background:transparent; }
+    .hero-orbit::before { content:''; position:absolute; width:92px; height:92px; border:1px solid rgba(201,168,76,0.08); border-radius:50%; background:transparent; }
+    .hero-orbit-dot { position:absolute; top:-2px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--gold); box-shadow:0 0 6px var(--gold); }
+    .hero-center { width:38px; height:38px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#c9a84c,#7b6fa0); display:flex; align-items:center; justify-content:center; font-size:16px; animation:counterSpin 40s linear infinite; box-shadow:0 0 18px rgba(201,168,76,0.2); }
+    .hero-eyebrow { font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold); margin-bottom:20px; }
+    .hero-title { font-family:'Cormorant Garamond',serif; font-size:clamp(52px,9vw,96px); font-weight:300; line-height:0.95; color:var(--text); margin-bottom:24px; letter-spacing:-0.01em; }
+    .hero-title em { font-style:italic; color:var(--gold2); }
+    .hero-sub { font-size:18px; color:var(--muted); max-width:460px; line-height:1.7; margin-bottom:40px; }
+    .hero-ctas { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:52px; }
+    .hero-social-proof { display:flex; align-items:center; gap:16px; color:var(--muted2); font-size:13px; }
+    .hero-social-proof strong { color:var(--muted); font-weight:500; }
+    .avatars-stack { display:flex; }
+    .avatars-stack .av { width:30px; height:30px; border-radius:50%; border:2px solid var(--night); margin-left:-8px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+    .avatars-stack .av:first-child { margin-left:0; }
+    .scroll-hint { position:absolute; bottom:32px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--muted2); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; animation:bob 2s ease-in-out infinite; }
+    .scroll-hint-line { width:1px; height:40px; background:linear-gradient(to bottom,var(--gold-dim),transparent); }
+
+    /* ── SECTIONS ── */
+    .section-label { font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--gold); margin-bottom:14px; }
+    .section-title { font-family:'Cormorant Garamond',serif; font-size:clamp(36px,5vw,58px); font-weight:300; line-height:1.1; margin-bottom:20px; }
+    .section-title em { font-style:italic; color:var(--gold2); }
+    .section-sub { font-size:17px; color:var(--muted); max-width:520px; line-height:1.7; }
+
+    /* ── HOW IT WORKS ── */
+    .how-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:72px; }
+    .how-step { padding:40px; position:relative; }
+    .how-step:nth-child(odd) { border-right:1px solid var(--border); }
+    .how-step:nth-child(1), .how-step:nth-child(2) { border-bottom:1px solid var(--border); }
+    .how-num { font-family:'Cormorant Garamond',serif; font-size:64px; font-weight:300; color:var(--border2); line-height:1; margin-bottom:12px; }
+    .how-icon { font-size:28px; margin-bottom:14px; }
+    .how-title { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:500; margin-bottom:10px; }
+    .how-desc { font-size:14px; color:var(--muted); line-height:1.7; }
+    .how-step::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(201,168,76,0.02),transparent); opacity:0; transition:opacity 0.3s; border-radius:var(--r2); pointer-events:none; }
+    .how-step:hover::after { opacity:1; }
+
+    /* ── FEATURES ── */
+    .features-wrap { margin-top:72px; }
+    .feature-row { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; margin-bottom:100px; }
+    .feature-row:last-child { margin-bottom:0; }
+    .feature-row.flip { direction:rtl; }
+    .feature-row.flip > * { direction:ltr; }
+    .feature-visual { background:var(--card); border:1px solid var(--border); border-radius:var(--r3); overflow:hidden; aspect-ratio:4/3; position:relative; }
+    .feature-visual-inner { padding:28px; height:100%; display:flex; flex-direction:column; }
+    .fv-header { display:flex; align-items:center; gap:10px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+    .fv-dot { width:8px; height:8px; border-radius:50%; }
+    .fv-title { font-size:12px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+    .chat-mock { display:flex; flex-direction:column; gap:12px; }
+    .cm-msg { max-width:82%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.55; }
+    .cm-ai { background:var(--void); border:1px solid var(--border); border-bottom-left-radius:3px; color:var(--text); align-self:flex-start; }
+    .cm-user { background:rgba(123,111,160,0.15); border:1px solid rgba(123,111,160,0.2); border-bottom-right-radius:3px; color:var(--text); align-self:flex-end; }
+    .cm-tag { display:inline-flex; align-items:center; gap:4px; background:var(--gold-dim); border-radius:10px; padding:2px 8px; font-size:11px; color:var(--gold); margin-top:6px; }
+    .transit-mock { display:flex; flex-direction:column; gap:10px; }
+    .tm-row { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--void); border:1px solid var(--border); border-radius:var(--r); }
+    .tm-symbol { font-size:18px; width:28px; text-align:center; flex-shrink:0; }
+    .tm-info { flex:1; }
+    .tm-name { font-size:13px; font-weight:500; margin-bottom:2px; }
+    .tm-sub { font-size:11px; color:var(--muted); }
+    .tm-orb { font-size:11px; color:var(--gold); background:var(--gold-dim); padding:2px 8px; border-radius:10px; flex-shrink:0; }
+    .memory-mock { display:flex; flex-direction:column; gap:8px; }
+    .mm-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--void); border:1px solid var(--border); border-radius:var(--r); }
+    .mm-cat { font-size:10px; letter-spacing:0.06em; text-transform:uppercase; padding:2px 8px; border-radius:10px; flex-shrink:0; margin-top:1px; white-space:nowrap; }
+    .mm-life { background:rgba(90,140,200,0.1); color:#7aacdc; }
+    .mm-rel { background:rgba(200,100,130,0.1); color:#dc8aaa; }
+    .mm-theme { background:rgba(123,111,160,0.1); color:#a090c8; }
+    .mm-text { font-size:12px; color:var(--muted); line-height:1.5; }
+    .feature-copy { padding:20px 0; }
+    .feature-h3 { font-family:'Cormorant Garamond',serif; font-size:36px; font-weight:400; line-height:1.15; margin-bottom:16px; }
+    .feature-h3 em { font-style:italic; color:var(--gold2); }
+    .feature-p { font-size:15px; color:var(--muted); line-height:1.75; margin-bottom:24px; }
+    .feature-points { display:flex; flex-direction:column; gap:10px; }
+    .feature-point { display:flex; align-items:flex-start; gap:10px; font-size:14px; color:var(--muted); line-height:1.5; }
+    .fp-dot { width:5px; height:5px; border-radius:50%; background:var(--gold); flex-shrink:0; margin-top:8px; }
+
+    /* ── DAILY BRIEFING ── */
+    .briefing-demo { max-width:640px; margin:48px auto 0; background:var(--card); border:1px solid var(--border); border-radius:var(--r3); overflow:hidden; text-align:left; }
+    .bd-header { padding:18px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .bd-logo { font-family:'Cormorant Garamond',serif; font-size:16px; letter-spacing:0.1em; color:var(--gold2); display:flex; align-items:center; gap:7px; }
+    .bd-logo-sub { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted2); letter-spacing:0.04em; font-weight:400; }
+    .bd-date { font-size:12px; color:var(--muted2); }
+    .bd-body { padding:28px 28px 24px; }
+    .bd-title { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:300; margin-bottom:6px; }
+    .bd-subtitle { font-size:13px; color:var(--muted); margin-bottom:20px; }
+    .bd-text { font-size:14px; line-height:1.85; color:var(--text); border-left:2px solid var(--gold-dim); padding-left:16px; margin-bottom:20px; }
+    .bd-pills { display:flex; gap:8px; flex-wrap:wrap; }
+    .bd-pill { display:flex; align-items:center; gap:5px; padding:5px 11px; background:var(--void); border:1px solid var(--border); border-radius:20px; font-size:12px; color:var(--muted); }
+    .bd-pill-dot { width:5px; height:5px; border-radius:50%; background:var(--gold); }
+
+    /* ── TESTIMONIALS ── */
+    .testi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:56px; text-align:left; }
+    .testi-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r2); padding:26px; position:relative; overflow:hidden; }
+    .testi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,0.15),transparent); }
+    .testi-stars { color:var(--gold); font-size:12px; letter-spacing:2px; margin-bottom:14px; }
+    .testi-quote { font-size:36px; font-family:'Cormorant Garamond',serif; color:var(--gold-dim); line-height:0.7; margin-bottom:10px; }
+    .testi-text { font-size:14px; color:var(--muted); line-height:1.75; margin-bottom:20px; font-style:italic; }
+    .testi-text em { font-style:normal; color:var(--text); }
+    .testi-author { display:flex; align-items:center; gap:10px; }
+    .testi-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+    .testi-name { font-size:13px; font-weight:500; }
+    .testi-meta { font-size:12px; color:var(--muted2); margin-top:1px; }
+
+    /* ── COMPARISON ── */
+    .comparison { max-width:780px; margin:56px auto 0; text-align:left; }
+    .comp-row { display:grid; grid-template-columns:2fr 1fr 1fr; gap:0; }
+    .comp-header { padding:14px 20px; font-size:12px; color:var(--muted2); letter-spacing:0.1em; text-transform:uppercase; border-bottom:1px solid var(--border); }
+    .comp-header.astral-col { background:var(--gold-glow); border-radius:var(--r) var(--r) 0 0; text-align:center; color:var(--gold); border:1px solid rgba(201,168,76,0.15); border-bottom:none; }
+    .comp-header.others-col { text-align:center; }
+    .comp-cell { padding:14px 20px; border-bottom:1px solid var(--border); font-size:14px; display:flex; align-items:center; }
+    .comp-cell.feature-name { color:var(--muted); }
+    .comp-cell.astral-col { background:rgba(201,168,76,0.03); border-left:1px solid rgba(201,168,76,0.1); border-right:1px solid rgba(201,168,76,0.1); justify-content:center; }
+    .comp-cell.others-col { justify-content:center; color:var(--muted2); }
+    .comp-row:last-child .comp-cell { border-bottom:none; }
+    .comp-row:last-child .comp-cell.astral-col { border-radius:0 0 var(--r) var(--r); border-bottom:1px solid rgba(201,168,76,0.15); }
+    .check { color:var(--gold); font-size:16px; }
+    .cross { color:var(--muted2); font-size:16px; }
+
+    /* ── PRICING ── */
+    .pricing-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:680px; margin:56px auto 0; text-align:left; }
+    .pricing-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r3); padding:32px; position:relative; overflow:hidden; }
+    .pricing-card.featured { border-color:rgba(201,168,76,0.3); background:linear-gradient(160deg,rgba(201,168,76,0.05),var(--card)); }
+    .pricing-card.featured::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+    .pricing-badge { position:absolute; top:18px; right:18px; background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#0d0f1a; font-size:11px; font-weight:600; padding:3px 12px; border-radius:20px; letter-spacing:0.05em; }
+    .pricing-label { font-size:13px; color:var(--muted); margin-bottom:10px; letter-spacing:0.06em; text-transform:uppercase; }
+    .pricing-price { font-family:'Cormorant Garamond',serif; font-size:52px; font-weight:300; line-height:1; color:var(--text); margin-bottom:4px; }
+    .pricing-price sup { font-size:22px; vertical-align:top; margin-top:10px; margin-right:2px; color:var(--muted); }
+    .pricing-price sub { font-size:16px; font-family:'DM Sans',sans-serif; color:var(--muted); font-weight:400; }
+    .pricing-saving { font-size:13px; color:var(--gold); margin-bottom:24px; height:18px; }
+    .pricing-divider { height:1px; background:var(--border); margin-bottom:24px; }
+    .pricing-features { display:flex; flex-direction:column; gap:11px; margin-bottom:28px; }
+    .pricing-feat { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); }
+    .pricing-feat-check { color:var(--gold); font-size:14px; flex-shrink:0; }
+    .pricing-btn { width:100%; justify-content:center; padding:13px; }
+    .trial-note { text-align:center; margin-top:20px; font-size:13px; color:var(--muted2); }
+    .trial-note strong { color:var(--muted); }
+
+    /* ── FAQ ── */
+    .faq-list { max-width:680px; margin:48px auto 0; }
+    .faq-item { border-bottom:1px solid var(--border); }
+    .faq-q { width:100%; padding:20px 0; font-size:16px; font-weight:500; cursor:pointer; display:flex; justify-content:space-between; align-items:center; color:var(--text); user-select:none; background:none; border:none; font-family:'DM Sans',sans-serif; text-align:left; }
+    .faq-q:hover { color:var(--gold2); }
+    .faq-toggle { font-size:22px; color:var(--muted2); transition:transform 0.25s; font-weight:300; line-height:1; flex-shrink:0; margin-left:16px; }
+    .faq-item.open .faq-toggle { transform:rotate(45deg); color:var(--gold); }
+    .faq-a { max-height:0; overflow:hidden; transition:max-height 0.35s ease,padding 0.3s; }
+    .faq-item.open .faq-a { max-height:300px; padding-bottom:20px; }
+    .faq-a p { font-size:15px; color:var(--muted); line-height:1.75; }
+
+    /* ── CTA ── */
+    .cta-section { padding:120px 32px; text-align:center; position:relative; z-index:1; }
+    .cta-glow { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:700px; height:400px; background:radial-gradient(ellipse,rgba(123,111,160,0.1) 0%,rgba(201,168,76,0.04) 50%,transparent 70%); pointer-events:none; }
+    .cta-h2 { font-family:'Cormorant Garamond',serif; font-size:clamp(42px,6vw,72px); font-weight:300; line-height:1.1; margin-bottom:20px; position:relative; }
+    .cta-h2 em { font-style:italic; color:var(--gold2); }
+    .cta-p { font-size:18px; color:var(--muted); max-width:440px; margin:0 auto 40px; line-height:1.7; position:relative; }
+    .cta-footnote { font-size:13px; color:var(--muted2); margin-top:16px; position:relative; }
+    .pill { display:inline-flex; align-items:center; gap:6px; background:var(--gold-dim); border:1px solid rgba(201,168,76,0.2); border-radius:20px; padding:5px 14px; font-size:12px; color:var(--gold); margin-bottom:20px; position:relative; }
+
+    /* ── FOOTER ── */
+    .landing-footer { border-top:1px solid var(--border); padding:40px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+    .footer-logo { font-family:'Cormorant Garamond',serif; font-size:17px; letter-spacing:0.14em; color:var(--muted2); display:flex; align-items:center; gap:7px; }
+    .footer-links { display:flex; gap:24px; }
+    .footer-links a { font-size:13px; color:var(--muted2); text-decoration:none; transition:color 0.2s; }
+    .footer-links a:hover { color:var(--muted); }
+    .footer-copy { font-size:12px; color:var(--muted2); }
+
+    /* ── RESPONSIVE: MOBILE (≤768px) ── */
+    @media (max-width:768px) {
+      .landing-nav { padding:0 20px; }
+      .landing-nav-links { display:none; }
+      .landing-nav-burger { display:flex; }
+      .how-grid { grid-template-columns:1fr; }
+      .how-step:nth-child(odd) { border-right:none; }
+      .feature-row, .feature-row.flip { grid-template-columns:1fr; direction:ltr; }
+      .testi-grid { grid-template-columns:1fr; }
+      .pricing-grid { grid-template-columns:1fr; max-width:400px; }
+      .landing-footer { flex-direction:column; gap:16px; text-align:center; }
+      .footer-links { flex-wrap:wrap; justify-content:center; }
+      .landing-wrap, .landing-hero { padding-left:20px; padding-right:20px; }
+      .comparison { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .comp-row { min-width:480px; }
+    }
+
+    /* ── RESPONSIVE: NARROW (≤480px) ── */
+    @media (max-width:480px) {
+      .landing-nav-ctas .btn-ghost { display:none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Starfield background -->
+  <canvas class="stars-canvas" id="starsCanvas"></canvas>
+
+  <!-- Nav backdrop (mobile drawer) -->
+  <div class="drawer-backdrop" id="navBackdrop"></div>
+
+  <!-- Mobile nav drawer -->
+  <div class="nav-drawer drawer" id="navDrawer" aria-hidden="true">
+    <div class="nav-drawer-header">
+      <div class="nav-drawer-logo"><span>✦</span> SERAPHOVA</div>
+    </div>
+    <a href="#how"      class="nav-drawer-item" onclick="closeMenu()">How it works</a>
+    <a href="#features" class="nav-drawer-item" onclick="closeMenu()">Features</a>
+    <a href="#pricing"  class="nav-drawer-item" onclick="closeMenu()">Pricing</a>
+    <a href="#faq"      class="nav-drawer-item" onclick="closeMenu()">FAQ</a>
+    <div class="nav-drawer-divider"></div>
+    <a href="/login"  class="nav-drawer-item" onclick="closeMenu()">Sign in</a>
+    <a href="/signup" class="nav-drawer-item" onclick="closeMenu()">Start free</a>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="landing-nav" id="landingNav">
+    <a href="/" class="landing-nav-logo">
+      <span class="landing-nav-mark">✦</span> SERAPHOVA
+    </a>
+    <div class="landing-nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="landing-nav-ctas">
+      <button type="button" class="landing-nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
+        <span class="burger-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+      </button>
+      <a href="/login"  class="btn btn-ghost">Sign in</a>
+      <a href="/signup" class="btn btn-gold">Start free</a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section class="landing-hero">
+    <div class="hero-orbit stagger-1">
+      <div class="hero-orbit-dot"></div>
+      <div class="hero-center">✦</div>
+    </div>
+
+    <p class="hero-eyebrow stagger-2">Your chart knows you</p>
+    <h1 class="hero-title stagger-3">The stars,<br><em>translated</em> for you</h1>
+    <p class="hero-sub stagger-4">
+      An AI that knows your natal chart as well as you know yourself. Not generic horoscopes — real, personal insight in conversation.
+    </p>
+
+    <div class="hero-ctas stagger-5">
+      <a href="/signup" class="btn btn-gold btn-xl">Begin your reading</a>
+      <a href="#how"    class="btn btn-outline btn-lg">See how it works</a>
+    </div>
+
+    <div class="hero-social-proof stagger-5">
+      <div class="avatars-stack">
+        <div class="av" style="background:hsl(240,35%,28%)">🌙</div>
+        <div class="av" style="background:hsl(260,35%,28%)">⭐</div>
+        <div class="av" style="background:hsl(280,35%,28%)">✦</div>
+        <div class="av" style="background:hsl(300,35%,28%)">🌟</div>
+      </div>
+      <span><strong>2,400+ seekers</strong> in early access · 4.9 ★</span>
+    </div>
+
+    <div class="scroll-hint">
+      <div class="scroll-hint-line"></div>
+      <span>Scroll</span>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── HOW IT WORKS ── -->
+  <section class="landing-section" id="how">
+    <div class="landing-wrap center">
+      <p class="section-label">How it works</p>
+      <h2 class="section-title">Three minutes to your<br><em>first real insight</em></h2>
+      <p class="section-sub">No lengthy setup. No generic content. Just your chart — and an AI that actually knows how to read it.</p>
+    </div>
+    <div class="landing-wrap">
+      <div class="how-grid">
+        <div class="how-step">
+          <div class="how-num">01</div>
+          <div class="how-icon">🌍</div>
+          <div class="how-title">Enter your birth data</div>
+          <p class="how-desc">Date, time, and place. Seraphova computes your full natal chart: all planets, houses, and aspects — not just your sun sign.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-num">02</div>
+          <div class="how-icon">💬</div>
+          <div class="how-title">Tell it what you're navigating</div>
+          <p class="how-desc">Career inflection, a relationship dynamic, a sense of being stuck. Three questions that frame your first conversation with intention.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-num">03</div>
+          <div class="how-icon">✦</div>
+          <div class="how-title">Your chart comes alive</div>
+          <p class="how-desc">Seraphova opens with a message written for your specific placements and today's transits. Not a template. Your chart, right now.</p>
+        </div>
+        <div class="how-step">
+          <div class="how-num">04</div>
+          <div class="how-icon">🧠</div>
+          <div class="how-title">It remembers as you go</div>
+          <p class="how-desc">Mention a job situation, a person, a recurring fear. Seraphova carries that context forward — building a picture of your life over time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── FEATURES ── -->
+  <section class="landing-section" id="features">
+    <div class="landing-wrap">
+      <div class="center">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Everything your chart<br><em>deserves</em></h2>
+      </div>
+
+      <div class="features-wrap">
+
+        <!-- Feature 1: AI Chat -->
+        <div class="feature-row">
+          <div class="feature-visual">
+            <div class="feature-visual-inner">
+              <div class="fv-header">
+                <div class="fv-dot" style="background:var(--gold)"></div>
+                <span class="fv-title">Chat · Saturn in 10th active</span>
+              </div>
+              <div class="chat-mock">
+                <div class="cm-msg cm-ai">
+                  Saturn is still grinding through your 10th house. You're in the middle of a chapter that rewards building over speed.
+                  <div class="cm-tag">♄ Saturn in 10th (ongoing)</div>
+                </div>
+                <div class="cm-msg cm-user">What does that mean for asking for a raise?</div>
+                <div class="cm-msg cm-ai">
+                  Venus square Saturn in your natal chart means you habitually feel you need to earn the right to ask. But Mercury is exact on your Sun today — peak articulation. If not now, when?
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-copy">
+            <p class="section-label">AI Chat</p>
+            <h3 class="feature-h3">Your chart,<br><em>in conversation</em></h3>
+            <p class="feature-p">Every response is grounded in your specific placements and today's live transits. Not a lookup table — genuine synthesis, in real-time.</p>
+            <div class="feature-points">
+              <div class="feature-point"><div class="fp-dot"></div>Full natal chart context on every message</div>
+              <div class="feature-point"><div class="fp-dot"></div>Live transit awareness, updated daily</div>
+              <div class="feature-point"><div class="fp-dot"></div>Aspect tags that explain the astrological reasoning</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Live Transits -->
+        <div class="feature-row flip">
+          <div class="feature-visual">
+            <div class="feature-visual-inner">
+              <div class="fv-header">
+                <div class="fv-dot" style="background:var(--accent)"></div>
+                <span class="fv-title">Today's transits · May 21</span>
+              </div>
+              <div class="transit-mock">
+                <div class="tm-row">
+                  <span class="tm-symbol">☿</span>
+                  <div class="tm-info">
+                    <div class="tm-name">Mercury conj. natal Sun</div>
+                    <div class="tm-sub">Peak self-expression · exact today</div>
+                  </div>
+                  <span class="tm-orb">0.8°</span>
+                </div>
+                <div class="tm-row">
+                  <span class="tm-symbol">♄</span>
+                  <div class="tm-info">
+                    <div class="tm-name">Saturn sq. natal Moon</div>
+                    <div class="tm-sub">Emotional structure · ongoing</div>
+                  </div>
+                  <span class="tm-orb">2.1°</span>
+                </div>
+                <div class="tm-row">
+                  <span class="tm-symbol">♃</span>
+                  <div class="tm-info">
+                    <div class="tm-name">Jupiter trine natal Mercury</div>
+                    <div class="tm-sub">Expansive thinking · building</div>
+                  </div>
+                  <span class="tm-orb">4.2°</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-copy">
+            <p class="section-label">Live Transits</p>
+            <h3 class="feature-h3">The sky <em>mapped<br>to your chart</em></h3>
+            <p class="feature-p">Transits calculated fresh every day — only the ones active for your specific placements. Not the collective Mercury retrograde. Yours.</p>
+            <div class="feature-points">
+              <div class="feature-point"><div class="fp-dot"></div>Personalized orb calculation per transit type</div>
+              <div class="feature-point"><div class="fp-dot"></div>Peak timing, duration, and intensity</div>
+              <div class="feature-point"><div class="fp-dot"></div>Daily briefing written around your active transits</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3: Memory Layer -->
+        <div class="feature-row">
+          <div class="feature-visual">
+            <div class="feature-visual-inner">
+              <div class="fv-header">
+                <div class="fv-dot" style="background:#7aacdc"></div>
+                <span class="fv-title">Memory · 4 entries</span>
+              </div>
+              <div class="memory-mock">
+                <div class="mm-item">
+                  <span class="mm-cat mm-life">life event</span>
+                  <span class="mm-text">New job in tech sales since March — still feels uncertain about the fit</span>
+                </div>
+                <div class="mm-item">
+                  <span class="mm-cat mm-rel">relationship</span>
+                  <span class="mm-text">Partner named Sam — stable but lacking spark recently</span>
+                </div>
+                <div class="mm-item">
+                  <span class="mm-cat mm-theme">theme</span>
+                  <span class="mm-text">Self-doubt before decisions, regret when not acting — recurring pattern</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="feature-copy">
+            <p class="section-label">Memory Layer</p>
+            <h3 class="feature-h3">It remembers<br><em>your life</em></h3>
+            <p class="feature-p">Tell Seraphova what's happening — it carries that context forward, session after session. After months, it knows you the way a good therapist does.</p>
+            <div class="feature-points">
+              <div class="feature-point"><div class="fp-dot"></div>Extracts life events, relationships, and patterns automatically</div>
+              <div class="feature-point"><div class="fp-dot"></div>Referenced naturally, never robotically</div>
+              <div class="feature-point"><div class="fp-dot"></div>You can view and delete any memory, any time</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── DAILY BRIEFING ── -->
+  <section class="landing-section landing-section-sm">
+    <div class="landing-wrap center">
+      <p class="section-label">Daily briefing</p>
+      <h2 class="section-title">Your morning,<br><em>written for your chart</em></h2>
+      <p class="section-sub">A short, personal transit note — generated each morning for your specific sky, not the collective forecast.</p>
+
+      <div class="briefing-demo">
+        <div class="bd-header">
+          <div class="bd-logo">✦ SERAPHOVA <span class="bd-logo-sub">Daily</span></div>
+          <div class="bd-date">Thursday, May 21, 2026</div>
+        </div>
+        <div class="bd-body">
+          <div class="bd-title">A window for honest words</div>
+          <div class="bd-subtitle">Scorpio Sun · Mercury transit exact today</div>
+          <div class="bd-text">
+            Mercury sits within 0.8° of your natal Sun today — the closest it will be all year. For you, with Sun in Scorpio in the third house, communication is already your native currency. Today the exchange rate is especially favorable.
+            <br><br>
+            Saturn continues its slow grind through your 10th house. The temptation is to wait until things feel more certain. Saturn rarely rewards waiting.
+          </div>
+          <div class="bd-pills">
+            <div class="bd-pill"><div class="bd-pill-dot"></div>☿ Mercury conj. Sun · 0.8°</div>
+            <div class="bd-pill"><div class="bd-pill-dot"></div>♄ Saturn in 10th</div>
+            <div class="bd-pill"><div class="bd-pill-dot"></div>🌙 Moon → Taurus 4:22pm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── TESTIMONIALS ── -->
+  <section class="landing-section">
+    <div class="landing-wrap center">
+      <p class="section-label">What people say</p>
+      <h2 class="section-title">Not just <em>another<br>horoscope app</em></h2>
+      <div class="testi-grid">
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <div class="testi-quote">"</div>
+          <p class="testi-text">I've used every astrology app out there. Seraphova is the first one that made me feel like it actually <em>knows my chart</em> — not just my sun sign. The transit context in every message is wild.</p>
+          <div class="testi-author">
+            <div class="testi-avatar" style="background:hsl(260,35%,25%)">S</div>
+            <div>
+              <div class="testi-name">Sarah M.</div>
+              <div class="testi-meta">Scorpio Sun · Virgo Rising</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <div class="testi-quote">"</div>
+          <p class="testi-text">I was skeptical but the daily briefings hit different. It mentioned my Saturn return before I'd even thought about it — and it was <em>exactly</em> describing what I'm going through.</p>
+          <div class="testi-author">
+            <div class="testi-avatar" style="background:hsl(200,35%,25%)">T</div>
+            <div>
+              <div class="testi-name">Tomas R.</div>
+              <div class="testi-meta">Capricorn Sun · Aquarius Moon</div>
+            </div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">★★★★★</div>
+          <div class="testi-quote">"</div>
+          <p class="testi-text">The relationship compatibility feature is genuinely useful. It's not just "you're compatible" — it explains the specific <em>dynamic</em> and how to navigate it. I use it for every important person in my life.</p>
+          <div class="testi-author">
+            <div class="testi-avatar" style="background:hsl(320,35%,25%)">L</div>
+            <div>
+              <div class="testi-name">Laila K.</div>
+              <div class="testi-meta">Pisces Sun · Leo Rising</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── COMPARISON ── -->
+  <section class="landing-section landing-section-sm">
+    <div class="landing-wrap center">
+      <p class="section-label">Why Seraphova</p>
+      <h2 class="section-title">Not your <em>typical<br>astrology app</em></h2>
+      <div class="comparison">
+        <div class="comp-row">
+          <div class="comp-header"></div>
+          <div class="comp-header astral-col">✦ Seraphova</div>
+          <div class="comp-header others-col">Others</div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Personalized to your full natal chart</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">Sun sign only</span></div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Live transit-to-chart mapping</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">Generic</span></div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Conversational AI (ask anything)</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">—</span></div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Memory of your life context</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">—</span></div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Relationship synastry + chat</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">Basic only</span></div>
+        </div>
+        <div class="comp-row">
+          <div class="comp-cell feature-name">Daily briefing personalized to your sky</div>
+          <div class="comp-cell astral-col"><span class="check">✦</span></div>
+          <div class="comp-cell others-col"><span class="cross">Collective forecast</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── PRICING ── -->
+  <section class="landing-section" id="pricing">
+    <div class="landing-wrap center">
+      <p class="section-label">Pricing</p>
+      <h2 class="section-title">Start with <em>3 days free</em><br>No card required</h2>
+      <p class="section-sub">Full access from day one. If it doesn't feel genuinely different from anything you've used, just stop — we don't need your card to find out.</p>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="pricing-label">Monthly</div>
+          <div class="pricing-price"><sup>€</sup>9<sub>/month</sub></div>
+          <div class="pricing-saving">&nbsp;</div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Unlimited AI chat</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Daily transit briefing</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Up to 3 relationship profiles</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Full conversation history</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Memory layer</div>
+          </div>
+          <a href="/signup" class="btn btn-outline pricing-btn">Start free trial</a>
+        </div>
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Best value</div>
+          <div class="pricing-label">Annual</div>
+          <div class="pricing-price"><sup>€</sup>59<sub>/year</sub></div>
+          <div class="pricing-saving">Save 45% · €4.90/month</div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Everything in Monthly</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Weekly deep-dive AI report</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Unlimited relationship profiles</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Priority support</div>
+            <div class="pricing-feat"><span class="pricing-feat-check">✦</span>Early access to new features</div>
+          </div>
+          <a href="/signup" class="btn btn-gold pricing-btn">Start free trial →</a>
+        </div>
+      </div>
+      <p class="trial-note"><strong>3 days free</strong> · No credit card · Cancel any time</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── FAQ ── -->
+  <section class="landing-section landing-section-sm" id="faq">
+    <div class="landing-wrap center">
+      <p class="section-label">Questions</p>
+      <h2 class="section-title">The ones <em>people ask</em></h2>
+    </div>
+    <div class="landing-wrap">
+      <div class="faq-list" id="faqList">
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            Do I need to know anything about astrology?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Not at all. Seraphova explains everything in plain language, not astrological jargon. If you want to go deeper, it can explain any placement or transit in detail — but you never have to know what a "sextile" is to get value from it.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            What if I don't know my exact birth time?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Seraphova works best with an exact time, but if you don't have it, use noon as a placeholder. Your sun, moon, and most planets will still be accurate — only your rising sign and house placements require a precise time. You can always update it later if you find your birth certificate.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            How is this different from Co-Star or the Pattern?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Those apps serve templated text content — the same paragraph for every Scorpio rising, forever. Seraphova uses AI to synthesize your chart with today's live transits and what you've personally shared about your life. Every response is generated fresh for you, not retrieved from a database of pre-written copy.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            What astrology system does Seraphova use?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Western tropical astrology, Placidus house system. These are the most widely practiced in the West. Vedic (sidereal) astrology is on the roadmap for a future update.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            What happens to my birth data and conversations?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Your data is stored securely and never sold or shared with third parties. Conversations are used only to build your memory layer — the things Seraphova remembers about your life to give more relevant responses. You can delete any memory or your entire account at any time from settings.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            Can I cancel any time?
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-a">
+            <p>Yes. One click from your account settings. If you're on an annual plan and cancel in the first 14 days, you get a full refund — no questions asked.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ── CTA ── -->
+  <section class="cta-section">
+    <div class="cta-glow"></div>
+    <div class="pill">✦ 3 days free · no card required</div>
+    <h2 class="cta-h2">Your chart has been<br><em>waiting to speak</em></h2>
+    <p class="cta-p">Three minutes from now, you could be in a real conversation with your natal chart — about your life, right now.</p>
+    <a href="/signup" class="btn btn-gold btn-xl">Begin your reading →</a>
+    <p class="cta-footnote">Join 2,400+ people already using Seraphova in early access</p>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="landing-footer">
+    <div class="footer-logo">✦ SERAPHOVA</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Contact</a>
+      <a href="#">Twitter</a>
+      <a href="#">Instagram</a>
+    </div>
+    <div class="footer-copy">© 2026 Seraphova. All rights reserved.</div>
+  </footer>
+
+  <script>
+    // ── Starfield ──
+    (function () {
+      const canvas = document.getElementById('starsCanvas');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = window.innerWidth;
+      let h = canvas.height = window.innerHeight;
+      const stars = Array.from({ length: 120 }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.2 + 0.2,
+        o: Math.random() * 0.6 + 0.1,
+        speed: Math.random() * 0.3 + 0.05,
+      }));
+      let t = 0;
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        t += 0.008;
+        stars.forEach(function (s) {
+          const pulse = s.o + Math.sin(t * s.speed + s.x) * 0.15;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(232,228,218,' + pulse + ')';
+          ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+      window.addEventListener('resize', function () {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      });
+    })();
+
+    // ── Nav scroll ──
+    (function () {
+      const nav = document.getElementById('landingNav');
+      function onScroll() {
+        if (window.scrollY > 20) {
+          nav.classList.add('scrolled');
+        } else {
+          nav.classList.remove('scrolled');
+        }
+      }
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+    })();
+
+    // ── Mobile drawer ──
+    var menuOpen = false;
+    var backdrop = document.getElementById('navBackdrop');
+    var drawer   = document.getElementById('navDrawer');
+    var burger   = document.getElementById('navBurger');
+
+    function openMenu() {
+      menuOpen = true;
+      backdrop.classList.add('visible');
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      burger.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMenu() {
+      menuOpen = false;
+      backdrop.classList.remove('visible');
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      burger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    burger.addEventListener('click', function () {
+      if (menuOpen) { closeMenu(); } else { openMenu(); }
+    });
+
+    backdrop.addEventListener('click', closeMenu);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && menuOpen) { closeMenu(); }
+    });
+
+    // ── FAQ accordion ──
+    (function () {
+      var items = document.querySelectorAll('#faqList .faq-item');
+      items.forEach(function (item) {
+        var btn = item.querySelector('.faq-q');
+        btn.addEventListener('click', function () {
+          var isOpen = item.classList.contains('open');
+          items.forEach(function (i) {
+            i.classList.remove('open');
+            i.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+          });
+          if (!isOpen) {
+            item.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

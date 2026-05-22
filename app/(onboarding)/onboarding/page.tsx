@@ -134,7 +134,7 @@ export default function OnboardingPage() {
           <div className="screen">
             <div className="ob-eyebrow">Step 2 of 3</div>
             <h2 className="ob-title">What are you <em>navigating?</em></h2>
-            <p className="ob-sub">This helps Astral frame your first conversation with intention. You can always shift focus later.</p>
+            <p className="ob-sub">This helps Seraphova frame your first conversation with intention. You can always shift focus later.</p>
 
             {error && <div className="error-msg" style={{ marginBottom: "16px" }}>{error}</div>}
 
@@ -160,14 +160,14 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div className="screen">
             <div className="ob-eyebrow">Step 3 of 3</div>
-            <h2 className="ob-title"><em>Astral</em> is reading your chart</h2>
+            <h2 className="ob-title"><em>Seraphova</em> is reading your chart</h2>
             <p className="ob-sub">Your natal chart has been computed. Here&apos;s your opening message.</p>
 
             <div className="first-msg-wrap">
               <div className="first-msg-header">
                 <div className="astral-avatar">✦</div>
                 <div>
-                  <div className="first-msg-name">Astral</div>
+                  <div className="first-msg-name">Seraphova</div>
                   <div className="first-msg-time">Just now</div>
                 </div>
               </div>

@@ -44,7 +44,7 @@ export default function SettingsPage() {
         <div className="sub-card">
           <div className="sub-icon">✦</div>
           <div className="sub-info">
-            <div className="sub-name">Astral · Trial</div>
+            <div className="sub-name">Seraphova · Trial</div>
             <div className="sub-detail">3-day free trial · No card required</div>
           </div>
           <button className="btn btn-outline btn-sm">Upgrade</button>
@@ -80,14 +80,14 @@ export default function SettingsPage() {
 
         <div className="settings-section">
           <div className="settings-section-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Astral&apos;s memory of you</span>
+            <span>Seraphova&apos;s memory of you</span>
             <span style={{ color: "var(--muted2)", fontSize: "11px", textTransform: "none", letterSpacing: "normal" }}>{memories.length} entries</span>
           </div>
           {memories.length === 0 ? (
-            <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>No memories yet — Astral will build these from your conversations.</p>
+            <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>No memories yet — Seraphova will build these from your conversations.</p>
           ) : (
             <>
-              <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "14px", lineHeight: 1.6 }}>Astral builds this from your conversations. Delete anything you&apos;d rather it forget.</p>
+              <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "14px", lineHeight: 1.6 }}>Seraphova builds this from your conversations. Delete anything you&apos;d rather it forget.</p>
               {memories.map(m => (
                 <div key={m.id} className="memory-item">
                   <span className={`memory-cat ${m.category}`}>{m.category.replace("_", " ")}</span>

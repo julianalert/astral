@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require auth
-  const publicRoutes = ["/", "/login", "/signup", "/auth/callback"];
+  const publicRoutes = ["/login", "/signup", "/auth/callback"];
   const isPublic = publicRoutes.some((r) => pathname === r || pathname.startsWith("/auth/"));
 
   if (!user && !isPublic) {
@@ -41,10 +41,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If logged in and trying to access landing or auth pages, redirect to chat
+  // If logged in and trying to access auth pages (or root), redirect to today's briefing
   if (user && (pathname === "/" || pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/chat";
+    url.pathname = "/briefing";
     return NextResponse.redirect(url);
   }
 

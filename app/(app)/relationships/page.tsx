@@ -28,7 +28,7 @@ export default function RelationshipsPage() {
         <div style={{ marginTop: "32px", textAlign: "center", padding: "40px 20px" }}>
           <div style={{ fontSize: "36px", marginBottom: "12px", opacity: 0.5 }}>💕</div>
           <div style={{ fontSize: "14px", color: "var(--muted)" }}>
-            For now, you can ask Astral about anyone in the chat.
+            For now, you can ask Seraphova about anyone in the chat.
           </div>
           <Link href="/chat" className="btn btn-outline btn-sm" style={{ marginTop: "16px", display: "inline-flex" }}>
             Go to chat
