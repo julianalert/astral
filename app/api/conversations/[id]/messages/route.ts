@@ -141,14 +141,16 @@ export async function POST(
         content: text,
       });
 
-      // Trigger memory extraction every 5 assistant messages (at 5, 10, 15…)
+      // Trigger memory extraction on every turn once there are 5+ messages.
+      // Because conversations start with 1 AI greeting, message counts are always
+      // odd (1→3→5→7…) — a "% 5 === 0" check would almost never fire.
+      // Deduplication inside extractAndStoreMemories prevents duplicate inserts.
       const { count: totalCount } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
         .eq("conversation_id", params.id);
 
-      if (totalCount && totalCount >= 5 && totalCount % 5 === 0) {
-        // Fetch full conversation for extraction (fire and forget)
+      if (totalCount && totalCount >= 5) {
         const { data: allMsgs } = await supabase
           .from("messages")
           .select("role, content")
@@ -156,7 +158,9 @@ export async function POST(
           .order("created_at", { ascending: true });
 
         if (allMsgs) {
-          void extractAndStoreMemories(params.id, user.id, allMsgs);
+          void extractAndStoreMemories(params.id, user.id, allMsgs).catch(
+            err => console.error("[memoryExtract] failed:", err)
+          );
         }
       }
     },
