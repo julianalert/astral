@@ -6,22 +6,41 @@ import { buildSystemPrompt, type MemoryEntry } from "@/lib/ai/systemPrompt";
 import { extractAndStoreMemories } from "@/lib/ai/memoryExtract";
 import type { NatalChart } from "@/lib/astrology/chart";
 
+const PAGE_SIZE = 30;
+
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: messages, error } = await supabase
+  const url = new URL(req.url);
+  // `before` is an ISO timestamp — load messages older than this (for pagination)
+  const before = url.searchParams.get("before");
+
+  let query = supabase
     .from("messages")
     .select("id, role, content, created_at")
     .eq("conversation_id", params.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false }) // newest first so we can slice
+    .limit(PAGE_SIZE);
+
+  if (before) {
+    query = query.lt("created_at", before);
+  }
+
+  const { data: messages, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ messages });
+
+  // Reverse to chronological order before returning
+  const ordered = (messages ?? []).reverse();
+  return NextResponse.json({
+    messages: ordered,
+    hasMore: (messages?.length ?? 0) === PAGE_SIZE,
+  });
 }
 
 export async function POST(

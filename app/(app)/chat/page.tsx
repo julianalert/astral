@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDrawer } from "@/lib/useDrawer";
 
 interface Conversation { id: string; title: string; updated_at: string }
-interface Message { id: string; role: "user" | "assistant"; content: string }
+interface Message { id: string; role: "user" | "assistant"; content: string; created_at?: string }
 
 export default function ChatPage() {
   const router = useRouter();
@@ -17,12 +17,16 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showTransit, setShowTransit] = useState(true);
+  const [briefingText, setBriefingText] = useState<string | null>(null);
+  const [showBriefing, setShowBriefing] = useState(true);
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallPlan, setPaywallPlan] = useState("annual");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
+  const messagesTop = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const closeSidebar = () => setSidebarOpen(false);
@@ -30,9 +34,10 @@ export default function ChatPage() {
 
   useEffect(() => {
     (async () => {
-      const [convRes, promptsRes] = await Promise.all([
+      const [convRes, promptsRes, briefingRes] = await Promise.all([
         supabase.from("conversations").select("id, title, updated_at").order("updated_at", { ascending: false }),
         fetch("/api/chat/suggested-prompts"),
+        fetch("/api/briefing/today"),
       ]);
       const { data } = convRes;
       if (!data?.length) { router.push("/onboarding"); return; }
@@ -43,6 +48,11 @@ export default function ChatPage() {
         const { prompts } = await promptsRes.json() as { prompts: string[] };
         if (Array.isArray(prompts)) setSuggestedPrompts(prompts);
       }
+
+      if (briefingRes.ok) {
+        const { briefing } = await briefingRes.json() as { briefing?: string };
+        if (briefing) setBriefingText(briefing);
+      }
     })();
   }, []);
 
@@ -51,10 +61,27 @@ export default function ChatPage() {
     (async () => {
       const res = await fetch(`/api/conversations/${activeId}/messages`);
       if (!res.ok) return;
-      const { messages: msgs } = await res.json() as { messages: Message[] };
+      const { messages: msgs, hasMore: more } = await res.json() as { messages: Message[]; hasMore: boolean };
       setMessages(msgs ?? []);
+      setHasMore(more ?? false);
     })();
   }, [activeId]);
+
+  const loadOlderMessages = async () => {
+    if (!activeId || !hasMore || loadingMore || !messages.length) return;
+    setLoadingMore(true);
+    const oldest = messages[0].created_at;
+    const res = await fetch(
+      `/api/conversations/${activeId}/messages${oldest ? `?before=${encodeURIComponent(oldest)}` : ""}`
+    );
+    if (!res.ok) { setLoadingMore(false); return; }
+    const { messages: older, hasMore: more } = await res.json() as { messages: Message[]; hasMore: boolean };
+    setMessages(prev => [...(older ?? []), ...prev]);
+    setHasMore(more ?? false);
+    setLoadingMore(false);
+    // Keep scroll position after prepend
+    messagesTop.current?.scrollIntoView({ block: "start" });
+  };
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -246,18 +273,36 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {showTransit && (
+        {showBriefing && briefingText && (
           <div className="transit-card">
             <div className="transit-card-icon">✦</div>
             <div className="transit-card-content">
-              <div className="transit-card-label">Live transit context active</div>
-              <div className="transit-card-text">Today&apos;s sky is mapped to your natal chart. Every response reflects what&apos;s active for you right now.</div>
+              <div className="transit-card-label">
+                Today&apos;s sky report ·{" "}
+                <Link href="/briefing" style={{ color: "var(--gold)", textDecoration: "underline", fontSize: "inherit" }}>
+                  Full briefing
+                </Link>
+              </div>
+              <div className="transit-card-text">{briefingText}</div>
             </div>
-            <button className="transit-card-close" onClick={() => setShowTransit(false)}>×</button>
+            <button className="transit-card-close" onClick={() => setShowBriefing(false)}>×</button>
           </div>
         )}
 
         <div className="messages-area">
+          <div ref={messagesTop} />
+          {hasMore && (
+            <div style={{ textAlign: "center", padding: "12px 0" }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={loadOlderMessages}
+                disabled={loadingMore}
+                style={{ fontSize: "12px", color: "var(--muted)" }}
+              >
+                {loadingMore ? "Loading…" : "Load older messages"}
+              </button>
+            </div>
+          )}
           {messages.map((m) => (
             <div key={m.id} className={`msg-row ${m.role}`}>
               <div className={`msg-avatar ${m.role}`}>{m.role === "assistant" ? "✦" : "✶"}</div>

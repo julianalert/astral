@@ -3,6 +3,7 @@ import { render } from "@react-email/components";
 import WelcomeEmail from "@/emails/WelcomeEmail";
 import EngagementEmail from "@/emails/EngagementEmail";
 import TrialEndingEmail from "@/emails/TrialEndingEmail";
+import DailyBriefingEmail from "@/emails/DailyBriefingEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM_EMAIL ?? "Astral <hello@astralapp.co>";
@@ -63,6 +64,33 @@ export async function sendTrialEndingEmail({
     from: FROM,
     to,
     subject: `Your Astral trial ends today`,
+    html,
+  });
+}
+
+export async function sendDailyBriefingEmail({
+  to,
+  userName,
+  briefingContent,
+}: {
+  to: string;
+  userName: string;
+  briefingContent: string;
+}) {
+  const dateLabel = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  const html = await render(
+    DailyBriefingEmail({ userName, briefingContent, dateLabel, appUrl: APP_URL })
+  );
+
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Your sky report for ${dateLabel}`,
     html,
   });
 }
