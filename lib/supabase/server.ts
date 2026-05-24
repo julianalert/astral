@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export function createClient() {
@@ -23,5 +24,14 @@ export function createClient() {
         },
       },
     }
+  );
+}
+
+// Service-role client for cron jobs and admin operations.
+// Bypasses RLS and has access to auth.admin — never expose to the browser.
+export function createAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }

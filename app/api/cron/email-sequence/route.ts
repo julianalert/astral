@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { sendEngagementEmail, sendTrialEndingEmail } from "@/lib/email/send";
 import { getCurrentTransits } from "@/lib/astrology/transits";
 import type { NatalChart } from "@/lib/astrology/chart";
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // Find users who completed onboarding and are still in sequence step 1 or 2
   // Step 1 = welcome sent → need day-2 email if ~24h have passed

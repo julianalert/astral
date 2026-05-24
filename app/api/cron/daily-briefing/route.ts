@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { generateDailyBriefing } from "@/lib/ai/briefing";
 import { sendDailyBriefingEmail } from "@/lib/email/send";
 import type { NatalChart } from "@/lib/astrology/chart";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const todayDate = new Date().toISOString().slice(0, 10);
 
   // Find users who have a natal chart and haven't received today's briefing yet
