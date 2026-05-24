@@ -4,7 +4,7 @@ import { generateDailyBriefing } from "@/lib/ai/briefing";
 import type { NatalChart } from "@/lib/astrology/chart";
 import type { MemoryEntry } from "@/lib/ai/systemPrompt";
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -12,18 +12,20 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const url = new URL(req.url);
   const todayDate = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const requestedDate = url.searchParams.get("date") ?? todayDate;
+  const isPastDate = requestedDate < todayDate;
 
-  // Return cached briefing if already generated today
+  // Return cached briefing if it exists
   const { data: existing } = await supabase
     .from("daily_briefings")
     .select("id, content, created_at")
     .eq("user_id", user.id)
-    .eq("date", todayDate)
+    .eq("date", requestedDate)
     .single();
 
   if (existing?.content) {
-    // Mark as read
     if (!existing.created_at) {
       await supabase
         .from("daily_briefings")
@@ -33,7 +35,12 @@ export async function GET() {
     return NextResponse.json({ briefing: existing.content, cached: true });
   }
 
-  // Generate fresh briefing
+  // Past dates are only served from cache — don't generate retroactively
+  if (isPastDate) {
+    return NextResponse.json({ briefing: null, cached: false });
+  }
+
+  // Generate fresh briefing for today
   const { data: chartRow } = await supabase
     .from("natal_charts")
     .select("*")

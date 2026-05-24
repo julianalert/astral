@@ -1,40 +1,89 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
+function toLocalDateString(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(dateStr: string, days: number) {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return toLocalDateString(d);
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
 export default function BriefingPage() {
+  const todayStr = toLocalDateString(new Date());
+
+  const [currentDate, setCurrentDate] = useState(todayStr);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const isToday = currentDate === todayStr;
 
-  useEffect(() => {
-    fetch("/api/briefing/today")
+  const loadBriefing = useCallback((date: string) => {
+    setLoading(true);
+    setBriefing(null);
+    setError(null);
+    fetch(`/api/briefing/today?date=${date}`)
       .then(res => res.json())
       .then(data => {
         if (data.briefing) setBriefing(data.briefing);
-        else setError(data.error ?? "Could not generate briefing.");
+        else if (data.error) setError(data.error);
+        else setError("No briefing available for this date.");
       })
       .catch(() => setError("Something went wrong."))
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    loadBriefing(currentDate);
+  }, [currentDate, loadBriefing]);
+
+  const goToPrev = () => setCurrentDate(d => addDays(d, -1));
+  const goToNext = () => setCurrentDate(d => addDays(d, 1));
+
   return (
     <div className="briefing-screen screen">
       <div className="briefing-inner">
-        <div className="briefing-date">{today} · Daily briefing</div>
-        <h1 className="briefing-title">Your personal<br />sky report</h1>
+
+        {/* Date nav */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "4px" }}>
+          <button
+            onClick={goToPrev}
+            style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "18px", padding: "4px 8px", lineHeight: 1 }}
+            aria-label="Previous day"
+          >
+            ←
+          </button>
+          <div className="briefing-date" style={{ margin: 0, flex: 1, textAlign: "center" }}>
+            {formatDate(currentDate)} · {isToday ? "Today's briefing" : "Daily briefing"}
+          </div>
+          <button
+            onClick={goToNext}
+            disabled={isToday}
+            style={{ background: "none", border: "none", color: isToday ? "transparent" : "var(--muted)", cursor: isToday ? "default" : "pointer", fontSize: "18px", padding: "4px 8px", lineHeight: 1 }}
+            aria-label="Next day"
+          >
+            →
+          </button>
+        </div>
+
+        <h1 className="briefing-title" style={{ textAlign: "center" }}>Your personal sky report</h1>
 
         {loading && (
           <div className="briefing-content">
             <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "var(--muted)" }}>
               <div className="typing-dots"><span /><span /><span /></div>
-              <span style={{ fontSize: "14px" }}>Generating your reading…</span>
+              <span style={{ fontSize: "14px" }}>
+                {isToday ? "Generating your reading…" : "Loading…"}
+              </span>
             </div>
           </div>
         )}
@@ -51,10 +100,11 @@ export default function BriefingPage() {
               <p style={{ lineHeight: "1.8", fontSize: "16px" }}>{briefing}</p>
             </div>
 
-            <div className="briefing-cta" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link href="/chat" className="btn btn-gold">Explore in chat →</Link>
-              <Link href="/chat" className="btn btn-outline">Ask a follow-up</Link>
-            </div>
+            {isToday && (
+              <div className="briefing-cta" style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Link href="/chat?new=true" className="btn btn-gold">Explore in chat →</Link>
+              </div>
+            )}
           </>
         )}
       </div>

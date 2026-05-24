@@ -6,8 +6,8 @@ import TrialEndingEmail from "@/emails/TrialEndingEmail";
 import DailyBriefingEmail from "@/emails/DailyBriefingEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.RESEND_FROM_EMAIL ?? "Astral <hello@astralapp.co>";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://astralapp.co";
+const FROM = process.env.RESEND_FROM_EMAIL ?? "Seraphova <hello@seraphova.com>";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.seraphova.com";
 
 export async function sendWelcomeEmail({
   to,

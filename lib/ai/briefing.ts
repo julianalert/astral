@@ -38,7 +38,7 @@ Tone: warm, intelligent, like a trusted friend who happens to know your chart by
   const { text } = await generateText({
     model: anthropic("claude-sonnet-4-6"),
     prompt,
-    maxOutputTokens: 250,
+    maxOutputTokens: 1024,
   });
 
   return text;

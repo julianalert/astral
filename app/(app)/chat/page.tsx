@@ -1,15 +1,17 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useDrawer } from "@/lib/useDrawer";
 
 interface Conversation { id: string; title: string; updated_at: string }
 interface Message { id: string; role: "user" | "assistant"; content: string; created_at?: string }
+interface RelProfile { id: string; name: string }
 
 export default function ChatPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -25,6 +27,7 @@ export default function ChatPage() {
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [relProfiles, setRelProfiles] = useState<RelProfile[]>([]);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const messagesTop = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -34,15 +37,22 @@ export default function ChatPage() {
 
   useEffect(() => {
     (async () => {
-      const [convRes, promptsRes, briefingRes] = await Promise.all([
-        supabase.from("conversations").select("id, title, updated_at").order("updated_at", { ascending: false }),
+      const [convRes, promptsRes, briefingRes, relRes] = await Promise.all([
+        supabase.from("conversations").select("id, title, updated_at").is("relationship_profile_id", null).order("updated_at", { ascending: false }),
         fetch("/api/chat/suggested-prompts"),
         fetch("/api/briefing/today"),
+        fetch("/api/relationships"),
       ]);
       const { data } = convRes;
       if (!data?.length) { router.push("/onboarding"); return; }
       setConversations(data);
-      setActiveId(data[0].id);
+
+      if (searchParams.get("new") === "true") {
+        setActiveId(null);
+        setMessages([]);
+      } else {
+        setActiveId(data[0].id);
+      }
 
       if (promptsRes.ok) {
         const { prompts } = await promptsRes.json() as { prompts: string[] };
@@ -52,6 +62,11 @@ export default function ChatPage() {
       if (briefingRes.ok) {
         const { briefing } = await briefingRes.json() as { briefing?: string };
         if (briefing) setBriefingText(briefing);
+      }
+
+      if (relRes.ok) {
+        const { profiles } = await relRes.json() as { profiles?: RelProfile[] };
+        if (Array.isArray(profiles)) setRelProfiles(profiles);
       }
     })();
   }, []);
@@ -88,7 +103,20 @@ export default function ChatPage() {
   }, [messages]);
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || !activeId || isLoading) return;
+    if (!text.trim() || isLoading) return;
+
+    let convId = activeId;
+    if (!convId) {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "New conversation" }),
+      });
+      const { conversation } = await res.json();
+      setConversations(prev => [conversation, ...prev]);
+      setActiveId(conversation.id);
+      convId = conversation.id;
+    }
 
     const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
@@ -99,7 +127,7 @@ export default function ChatPage() {
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(`/api/conversations/${activeId}/messages`, {
+      const res = await fetch(`/api/conversations/${convId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: updatedMessages }),
@@ -145,7 +173,7 @@ export default function ChatPage() {
         // Just bump the updated_at timestamp in local state for sort ordering
         setConversations(prev =>
           prev.map(c =>
-            c.id === activeId ? { ...c, updated_at: new Date().toISOString() } : c
+            c.id === convId ? { ...c, updated_at: new Date().toISOString() } : c
           ).sort((a, b) => b.updated_at.localeCompare(a.updated_at))
         );
       }
@@ -163,15 +191,8 @@ export default function ChatPage() {
     sendMessage(input);
   };
 
-  const handleNewConversation = async () => {
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "New conversation" }),
-    });
-    const { conversation } = await res.json();
-    setConversations(prev => [conversation, ...prev]);
-    setActiveId(conversation.id);
+  const handleNewConversation = () => {
+    setActiveId(null);
     setMessages([]);
     closeSidebar();
   };
@@ -244,10 +265,16 @@ export default function ChatPage() {
             <span className="sidebar-item-text">{c.title}</span>
           </div>
         ))}
-        <div className="sidebar-section">People</div>
+        <div className="sidebar-section">Relationships</div>
+        {relProfiles.map(p => (
+          <Link key={p.id} href={`/relationships/${p.id}`} className="sidebar-item" onClick={closeSidebar}>
+            <span className="sidebar-item-icon">💕</span>
+            <span className="sidebar-item-text">{p.name}</span>
+          </Link>
+        ))}
         <Link href="/relationships" className="sidebar-item" onClick={closeSidebar}>
-          <span className="sidebar-item-icon">💕</span>
-          <span className="sidebar-item-text">Relationships</span>
+          <span className="sidebar-item-icon">＋</span>
+          <span className="sidebar-item-text" style={{ color: "var(--muted)" }}>Add person</span>
         </Link>
         <div style={{ flex: 1 }} />
       </div>
@@ -306,9 +333,7 @@ export default function ChatPage() {
           {messages.map((m) => (
             <div key={m.id} className={`msg-row ${m.role}`}>
               <div className={`msg-avatar ${m.role}`}>{m.role === "assistant" ? "✦" : "✶"}</div>
-              <div>
-                <div className={`msg-bubble ${m.role}`}>{m.content}</div>
-              </div>
+              <div className={`msg-bubble ${m.role}`}>{m.content}</div>
             </div>
           ))}
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (

@@ -6,9 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useDrawer } from "@/lib/useDrawer";
 
 const TABS = [
-  { id: "chat",          label: "Chat",   href: "/chat" },
   { id: "briefing",      label: "Today",  href: "/briefing" },
-  { id: "relationships", label: "People", href: "/relationships" },
+  { id: "chat",          label: "Chat",   href: "/chat" },
+  { id: "relationships", label: "Relationships", href: "/relationships" },
 ];
 
 function BurgerIcon() {

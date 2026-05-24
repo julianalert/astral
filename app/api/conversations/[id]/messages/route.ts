@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
 import { buildSystemPrompt, type MemoryEntry } from "@/lib/ai/systemPrompt";
+import { buildRelationshipSystemPrompt } from "@/lib/ai/compatibilityReport";
 import { extractAndStoreMemories } from "@/lib/ai/memoryExtract";
 import type { NatalChart } from "@/lib/astrology/chart";
 
@@ -51,10 +52,10 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Verify conversation belongs to user
+  // Verify conversation belongs to user — also fetch relationship_profile_id
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id")
+    .select("id, relationship_profile_id")
     .eq("id", params.id)
     .eq("user_id", user.id)
     .single();
@@ -94,8 +95,8 @@ export async function POST(
     .select("id", { count: "exact", head: true })
     .eq("conversation_id", params.id);
 
-  // Auto-title: if only the initial AI greeting exists (count === 1), use the first user message as title
-  if ((existingCount ?? 0) === 1) {
+  // Auto-title: fires on the first user message, whether or not an AI greeting exists first
+  if ((existingCount ?? 0) <= 1) {
     const words = lastMessage.content.trim().split(/\s+/).slice(0, 8).join(" ");
     const title = words.length < lastMessage.content.trim().length ? `${words}…` : words;
     await supabase
@@ -136,8 +137,30 @@ export async function POST(
 
   const memories: MemoryEntry[] = memoryRows ?? [];
 
-  // Build system prompt
-  const systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
+  // Build system prompt — use relationship-scoped prompt if this is a synastry conversation
+  let systemPrompt: string;
+
+  if (conv.relationship_profile_id) {
+    const { data: relProfile } = await supabase
+      .from("relationship_profiles")
+      .select("name, chart_data")
+      .eq("id", conv.relationship_profile_id)
+      .single();
+
+    if (relProfile) {
+      const partnerChart = (relProfile.chart_data as { chart: NatalChart }).chart;
+      const report = (relProfile.chart_data as { compatibility_report?: string }).compatibility_report ?? "";
+      systemPrompt = buildRelationshipSystemPrompt(
+        chart, userName, birthInfo,
+        partnerChart, relProfile.name,
+        report
+      );
+    } else {
+      systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
+    }
+  } else {
+    systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
+  }
 
   // Build message history for Claude
   const aiMessages = incomingMessages
