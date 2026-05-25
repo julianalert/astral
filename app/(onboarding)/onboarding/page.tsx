@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@/lib/mixpanel";
 
 const TIMEZONES = [
   "UTC-12", "UTC-11", "UTC-10", "UTC-9", "UTC-8", "UTC-7", "UTC-6",
@@ -79,6 +80,11 @@ export default function OnboardingPage() {
     }
     const data = await res.json();
     setFirstMessage(data.message);
+    track("onboarding_completed", {
+      platform: "web",
+      focus_area: FOCUS_OPTIONS[focus].label,
+      has_situation: !!situation,
+    });
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { track } from "@/lib/mixpanel";
 
 interface RelProfile { id: string; name: string; birth_date: string; birth_location: string | null }
 
@@ -51,6 +52,11 @@ export default function RelationshipsPage() {
     }
 
     const { profile } = await res.json() as { profile: RelProfile };
+    track("relationship_added", {
+      platform: "web",
+      has_birth_time: !!birthTime,
+      has_birth_location: !!birthLocation,
+    });
     setProfiles(prev => [profile, ...prev]);
     setShowForm(false);
     setName(""); setBirthDate(""); setBirthTime(""); setBirthLocation("");

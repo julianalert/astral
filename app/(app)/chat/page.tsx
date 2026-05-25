@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/mixpanel";
 import { useDrawer } from "@/lib/useDrawer";
 
 interface Conversation { id: string; title: string; updated_at: string }
@@ -105,6 +106,7 @@ export default function ChatPage() {
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    const isNewConversation = !activeId;
     let convId = activeId;
     if (!convId) {
       const res = await fetch("/api/conversations", {
@@ -123,6 +125,11 @@ export default function ChatPage() {
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
+
+    track("chat_message_sent", {
+      platform: "web",
+      is_new_conversation: isNewConversation,
+    });
 
     abortRef.current = new AbortController();
 

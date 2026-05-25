@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import StarField from "@/components/StarField";
 import { createClient } from "@/lib/supabase/client";
+import { trackSignUpCompleted } from "@/lib/mixpanel";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -19,12 +20,15 @@ export default function SignupPage() {
     if (password !== confirm) { setError("Passwords don't match"); return; }
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) { setError(error.message); setLoading(false); return; }
+    if (data.user) {
+      trackSignUpCompleted(data.user.id, "email");
+    }
     router.push("/onboarding");
   };
 

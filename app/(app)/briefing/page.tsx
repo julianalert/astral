@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { track } from "@/lib/mixpanel";
 
 function toLocalDateString(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -34,8 +35,14 @@ export default function BriefingPage() {
     fetch(`/api/briefing/today?date=${date}`)
       .then(res => res.json())
       .then(data => {
-        if (data.briefing) setBriefing(data.briefing);
-        else if (data.error) setError(data.error);
+        if (data.briefing) {
+          setBriefing(data.briefing);
+          track("briefing_viewed", {
+            platform: "web",
+            is_today: date === toLocalDateString(new Date()),
+            briefing_date: date,
+          });
+        } else if (data.error) setError(data.error);
         else setError("No briefing available for this date.");
       })
       .catch(() => setError("Something went wrong."))
