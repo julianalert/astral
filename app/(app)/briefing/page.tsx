@@ -25,6 +25,7 @@ export default function BriefingPage() {
   const [briefing, setBriefing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [onboardingToday, setOnboardingToday] = useState(false);
 
   const isToday = currentDate === todayStr;
 
@@ -32,6 +33,7 @@ export default function BriefingPage() {
     setLoading(true);
     setBriefing(null);
     setError(null);
+    setOnboardingToday(false);
     fetch(`/api/briefing/today?date=${date}`)
       .then(res => res.json())
       .then(data => {
@@ -42,8 +44,13 @@ export default function BriefingPage() {
             is_today: date === toLocalDateString(new Date()),
             briefing_date: date,
           });
-        } else if (data.error) setError(data.error);
-        else setError("No briefing available for this date.");
+        } else if (data.onboarding_today) {
+          setOnboardingToday(true);
+        } else if (data.error) {
+          setError(data.error);
+        } else {
+          setError("No briefing available for this date.");
+        }
       })
       .catch(() => setError("Something went wrong."))
       .finally(() => setLoading(false));
@@ -92,6 +99,21 @@ export default function BriefingPage() {
                 {isToday ? "Generating your reading…" : "Loading…"}
               </span>
             </div>
+          </div>
+        )}
+
+        {onboardingToday && (
+          <div className="briefing-content" style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "32px", marginBottom: "16px", opacity: 0.5 }}>🌙</div>
+            <p style={{ fontSize: "15px", lineHeight: "1.8", color: "var(--text)" }}>
+              Your first sky report will be ready tomorrow morning.
+            </p>
+            <p style={{ fontSize: "13px", color: "var(--muted)", marginTop: "8px" }}>
+              You&apos;ll receive it by email at 6 AM. Your reading in the chat already reflects today&apos;s sky — that&apos;s your starting point.
+            </p>
+            <Link href="/chat" className="btn btn-outline btn-sm" style={{ marginTop: "20px", display: "inline-flex" }}>
+              Back to chat
+            </Link>
           </div>
         )}
 

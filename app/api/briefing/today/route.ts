@@ -40,6 +40,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ briefing: null, cached: false });
   }
 
+  // Skip generation on the day the user signed up — the onboarding first message
+  // already covers today's chart and transits. Briefing starts from day 2.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("created_at")
+    .eq("id", user.id)
+    .single();
+
+  const signupDate = profile?.created_at?.slice(0, 10);
+  if (signupDate === todayDate) {
+    return NextResponse.json({ briefing: null, onboarding_today: true });
+  }
+
   // Generate fresh briefing for today
   const { data: chartRow } = await supabase
     .from("natal_charts")

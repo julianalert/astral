@@ -38,13 +38,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     (async () => {
-      const [convRes, promptsRes, briefingRes, relRes] = await Promise.all([
-        supabase.from("conversations").select("id, title, updated_at").is("relationship_profile_id", null).order("updated_at", { ascending: false }),
-        fetch("/api/chat/suggested-prompts"),
-        fetch("/api/briefing/today"),
-        fetch("/api/relationships"),
-      ]);
-      const { data } = convRes;
+      // Load conversations first — this is the critical path.
+      // Messages can't load until we have an activeId, so don't block on slow requests.
+      const { data } = await supabase
+        .from("conversations")
+        .select("id, title, updated_at")
+        .is("relationship_profile_id", null)
+        .order("updated_at", { ascending: false });
+
       if (!data?.length) { router.push("/onboarding"); return; }
       setConversations(data);
 
@@ -55,20 +56,25 @@ export default function ChatPage() {
         setActiveId(data[0].id);
       }
 
-      if (promptsRes.ok) {
-        const { prompts } = await promptsRes.json() as { prompts: string[] };
-        if (Array.isArray(prompts)) setSuggestedPrompts(prompts);
-      }
-
-      if (briefingRes.ok) {
-        const { briefing } = await briefingRes.json() as { briefing?: string };
-        if (briefing) setBriefingText(briefing);
-      }
-
-      if (relRes.ok) {
-        const { profiles } = await relRes.json() as { profiles?: RelProfile[] };
-        if (Array.isArray(profiles)) setRelProfiles(profiles);
-      }
+      // Load secondary data in the background — don't block chat rendering
+      Promise.all([
+        fetch("/api/chat/suggested-prompts"),
+        fetch("/api/briefing/today"),
+        fetch("/api/relationships"),
+      ]).then(async ([promptsRes, briefingRes, relRes]) => {
+        if (promptsRes.ok) {
+          const { prompts } = await promptsRes.json() as { prompts: string[] };
+          if (Array.isArray(prompts)) setSuggestedPrompts(prompts);
+        }
+        if (briefingRes.ok) {
+          const { briefing } = await briefingRes.json() as { briefing?: string };
+          if (briefing) setBriefingText(briefing);
+        }
+        if (relRes.ok) {
+          const { profiles } = await relRes.json() as { profiles?: RelProfile[] };
+          if (Array.isArray(profiles)) setRelProfiles(profiles);
+        }
+      }).catch(() => { /* non-critical, silently ignore */ });
     })();
   }, []);
 
