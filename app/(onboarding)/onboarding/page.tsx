@@ -167,7 +167,11 @@ export default function OnboardingPage() {
           <div className="screen">
             <div className="ob-eyebrow">Step 3 of 3</div>
             <h2 className="ob-title"><em>Seraphova</em> is reading your chart</h2>
-            <p className="ob-sub">Your natal chart has been computed. Here&apos;s your opening message.</p>
+            <p className="ob-sub">
+              {loading
+                ? "Your natal chart is being computed…"
+                : "Your natal chart has been computed. Here's your opening message."}
+            </p>
 
             <div className="first-msg-wrap">
               <div className="first-msg-header">
