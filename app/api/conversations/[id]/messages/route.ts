@@ -5,6 +5,13 @@ import { streamText } from "ai";
 import { buildSystemPrompt, type MemoryEntry } from "@/lib/ai/systemPrompt";
 import { buildRelationshipSystemPrompt } from "@/lib/ai/compatibilityReport";
 import { extractAndStoreMemories } from "@/lib/ai/memoryExtract";
+import { detectMode } from "@/lib/ai/modeDetect";
+import {
+  getRecurringPatterns,
+  shouldSurfacePattern,
+  markPatternSurfaced,
+  buildPatternDescription,
+} from "@/lib/ai/patternDetect";
 import type { NatalChart } from "@/lib/astrology/chart";
 
 const PAGE_SIZE = 30;
@@ -140,6 +147,43 @@ export async function POST(
 
   const memories: MemoryEntry[] = memoryRows ?? [];
 
+  // ── Mode detection ──────────────────────────────────────────────────────────
+  // Count conversations to determine if user has hit pattern-mode threshold
+  const { count: sessionCount } = await supabase
+    .from("conversations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  // Pull the last 3 user messages for impatience detection (excluding current)
+  const recentUserMessages = incomingMessages
+    .filter(m => m.role === "user")
+    .slice(-4, -1)   // 3 messages before the current one
+    .map(m => m.content);
+
+  let hasRecurringPattern = false;
+  let patternDescription: string | undefined;
+
+  if ((sessionCount ?? 0) >= 10) {
+    const canSurface = await shouldSurfacePattern(user.id);
+    if (canSurface) {
+      const patterns = await getRecurringPatterns(user.id);
+      if (patterns.length > 0) {
+        hasRecurringPattern = true;
+        patternDescription = buildPatternDescription(patterns[0]);
+      }
+    }
+  }
+
+  const wordCount = lastMessage.content.trim().split(/\s+/).length;
+  const mode = detectMode({
+    messageText: lastMessage.content,
+    wordCount,
+    sessionCount: sessionCount ?? 0,
+    recentUserMessages,
+    hasRecurringPattern,
+    patternDescription,
+  });
+
   // Build system prompt — use relationship-scoped prompt if this is a synastry conversation
   let systemPrompt: string;
 
@@ -159,10 +203,17 @@ export async function POST(
         report
       );
     } else {
-      systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate);
+      systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate, mode, patternDescription);
     }
   } else {
-    systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate);
+    systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate, mode, patternDescription);
+  }
+
+  // If pattern mode triggered, record it so it doesn't fire again for 2 weeks
+  if (mode === 'pattern') {
+    void markPatternSurfaced(user.id).catch(
+      err => console.error("[patternDetect] markPatternSurfaced failed:", err)
+    );
   }
 
   // Cap history to the last 12 messages to bound input token cost on long conversations
