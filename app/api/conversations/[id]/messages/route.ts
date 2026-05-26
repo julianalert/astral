@@ -162,18 +162,30 @@ export async function POST(
     systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
   }
 
-  // Build message history for Claude
-  const aiMessages = incomingMessages
-    .filter(m => m.role === "user" || m.role === "assistant")
-    .map(m => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+  // Cap history to the last 12 messages to bound input token cost on long conversations
+  const recentMessages = incomingMessages.slice(-12);
+
+  // Build message history for Claude — system prompt first with cache control so
+  // Anthropic caches it across turns (saves ~90% on those input tokens per day).
+  const aiMessages = [
+    {
+      role: "system" as const,
+      content: systemPrompt,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      },
+    },
+    ...recentMessages
+      .filter(m => m.role === "user" || m.role === "assistant")
+      .map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+  ];
 
   // Stream from Claude
   const result = await streamText({
     model: anthropic("claude-sonnet-4-6"),
-    system: systemPrompt,
     messages: aiMessages,
     maxOutputTokens: 600,
     onFinish: async ({ text }) => {
@@ -183,16 +195,15 @@ export async function POST(
         content: text,
       });
 
-      // Trigger memory extraction on every turn once there are 5+ messages.
-      // Because conversations start with 1 AI greeting, message counts are always
-      // odd (1→3→5→7…) — a "% 5 === 0" check would almost never fire.
-      // Deduplication inside extractAndStoreMemories prevents duplicate inserts.
+      // Throttle memory extraction: fire at message 5, then every 6 messages
+      // (i.e. every ~3 turns). Conversations are always odd-numbered
+      // (1 AI greeting + pairs of user/AI), so this fires at 5, 11, 17, 23…
       const { count: totalCount } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
         .eq("conversation_id", params.id);
 
-      if (totalCount && totalCount >= 5) {
+      if (totalCount && totalCount >= 5 && (totalCount - 5) % 6 === 0) {
         const { data: allMsgs } = await supabase
           .from("messages")
           .select("role, content")
