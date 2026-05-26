@@ -4,10 +4,32 @@ import { useRouter } from "next/navigation";
 import { track } from "@/lib/mixpanel";
 
 const TIMEZONES = [
-  "UTC-12", "UTC-11", "UTC-10", "UTC-9", "UTC-8", "UTC-7", "UTC-6",
-  "UTC-5", "UTC-4", "UTC-3", "UTC-2", "UTC-1", "UTC+0",
-  "UTC+1", "UTC+2", "UTC+3", "UTC+4", "UTC+5", "UTC+5:30",
-  "UTC+6", "UTC+7", "UTC+8", "UTC+9", "UTC+10", "UTC+11", "UTC+12",
+  { value: "UTC-12", label: "UTC−12 — Baker Island, Howland Island" },
+  { value: "UTC-11", label: "UTC−11 — American Samoa, Midway Island" },
+  { value: "UTC-10", label: "UTC−10 — Hawaii (Honolulu)" },
+  { value: "UTC-9", label: "UTC−9 — Alaska (Anchorage)" },
+  { value: "UTC-8", label: "UTC−8 — US Pacific (Los Angeles, Vancouver)" },
+  { value: "UTC-7", label: "UTC−7 — US Mountain (Denver, Phoenix)" },
+  { value: "UTC-6", label: "UTC−6 — US Central (Chicago, Mexico City)" },
+  { value: "UTC-5", label: "UTC−5 — US Eastern (New York, Toronto)" },
+  { value: "UTC-4", label: "UTC−4 — Atlantic (Caracas, Santiago)" },
+  { value: "UTC-3", label: "UTC−3 — Brazil (São Paulo), Argentina (Buenos Aires)" },
+  { value: "UTC-2", label: "UTC−2 — South Georgia, Fernando de Noronha" },
+  { value: "UTC-1", label: "UTC−1 — Azores (Portugal)" },
+  { value: "UTC+0", label: "UTC+0 — UK (London), Ireland, West Africa (Ghana)" },
+  { value: "UTC+1", label: "UTC+1 — Central Europe (Paris, Berlin, Rome, Madrid)" },
+  { value: "UTC+2", label: "UTC+2 — Eastern Europe (Athens, Helsinki), Egypt (Cairo), South Africa" },
+  { value: "UTC+3", label: "UTC+3 — Moscow, Turkey (Istanbul), East Africa (Nairobi, Riyadh)" },
+  { value: "UTC+4", label: "UTC+4 — UAE (Dubai), Azerbaijan (Baku), Mauritius" },
+  { value: "UTC+5", label: "UTC+5 — Pakistan (Karachi), Uzbekistan (Tashkent)" },
+  { value: "UTC+5:30", label: "UTC+5:30 — India (Delhi, Mumbai), Sri Lanka" },
+  { value: "UTC+6", label: "UTC+6 — Bangladesh (Dhaka), Kazakhstan (Almaty)" },
+  { value: "UTC+7", label: "UTC+7 — Thailand (Bangkok), Vietnam, Indonesia (Jakarta)" },
+  { value: "UTC+8", label: "UTC+8 — China (Beijing), Singapore, Philippines (Manila), Perth" },
+  { value: "UTC+9", label: "UTC+9 — Japan (Tokyo), Korea (Seoul)" },
+  { value: "UTC+10", label: "UTC+10 — Eastern Australia (Sydney, Melbourne)" },
+  { value: "UTC+11", label: "UTC+11 — Solomon Islands, New Caledonia" },
+  { value: "UTC+12", label: "UTC+12 — New Zealand (Auckland), Fiji" },
 ];
 
 const FOCUS_OPTIONS = [
@@ -112,12 +134,14 @@ export default function OnboardingPage() {
               <div className="ob-row">
                 <div>
                   <label className="label">Time of birth</label>
-                  <input className="input" type="time" value={birthTime} onChange={e => setBirthTime(e.target.value)} />
+                  <input className="input" type="time" value={birthTime} onChange={e => setBirthTime(e.target.value)} onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} />
                 </div>
                 <div>
                   <label className="label">Timezone</label>
                   <select className="input" value={timezone} onChange={e => setTimezone(e.target.value)} style={{ cursor: "pointer" }}>
-                    {TIMEZONES.map(tz => <option key={tz}>{tz}</option>)}
+                    {TIMEZONES.map(tz => (
+                      <option key={tz.value} value={tz.value}>{tz.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

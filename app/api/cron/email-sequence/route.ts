@@ -60,24 +60,22 @@ export async function GET(request: Request) {
   const now = new Date();
   const h24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const h48Ago = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const h72Ago = new Date(now.getTime() - 72 * 60 * 60 * 1000);
 
-  // Users due for day-2 email: completed onboarding 24–48h ago, step=1
+  // Users due for day-2 email: step=1 and signed up more than 24h ago.
+  // No upper bound — email_sequence_step prevents double-sending.
   const { data: day2Users } = await supabase
     .from("profiles")
     .select("id, email_sequence_step, created_at")
     .eq("email_sequence_step", 1)
     .eq("onboarding_completed", true)
-    .gte("created_at", h48Ago.toISOString())
     .lte("created_at", h24Ago.toISOString());
 
-  // Users due for day-3 email: completed onboarding 48–72h ago, step=2
+  // Users due for day-3 email: step=2 and signed up more than 48h ago.
   const { data: day3Users } = await supabase
     .from("profiles")
     .select("id, email_sequence_step, created_at")
     .eq("email_sequence_step", 2)
     .eq("onboarding_completed", true)
-    .gte("created_at", h72Ago.toISOString())
     .lte("created_at", h48Ago.toISOString());
 
   const results = { day2: 0, day3: 0, errors: 0 };

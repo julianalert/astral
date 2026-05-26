@@ -18,12 +18,21 @@ interface DailyBriefingEmailProps {
   appUrl: string;
 }
 
+// Truncate at a word boundary, max ~180 chars, append ellipsis
+function teaser(text: string, max = 180): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max).replace(/\s+\S*$/, "");
+  return cut + "…";
+}
+
 export default function DailyBriefingEmail({
   userName,
   briefingContent,
   dateLabel,
   appUrl,
 }: DailyBriefingEmailProps) {
+  const preview = teaser(briefingContent);
+
   return (
     <Html>
       <Head />
@@ -39,18 +48,17 @@ export default function DailyBriefingEmail({
             <Heading style={h1}>Your sky report, {userName}.</Heading>
 
             <Section style={briefingBox}>
-              <Text style={briefingText}>{briefingContent}</Text>
+              <Text style={briefingText}>{preview}</Text>
             </Section>
 
             <Section style={btnSection}>
-              <Button href={`${appUrl}/chat`} style={btn}>
-                Explore in chat →
+              <Button href={`${appUrl}/briefing`} style={btn}>
+                Read your full report →
               </Button>
             </Section>
 
             <Text style={hint}>
-              Ask your reading anything about today&apos;s transits, what they mean
-              for your chart, or how to work with the current energy.
+              Your complete sky report is waiting — including what to do with today&apos;s energy.
             </Text>
           </Section>
 
