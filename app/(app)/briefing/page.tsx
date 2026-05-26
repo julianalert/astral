@@ -18,6 +18,113 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
+interface ProfectionData {
+  profection: {
+    house: number;
+    houseName: string;
+    themes: string;
+    lordOfYear: string;
+    lordSign: string;
+    age: number;
+    daysRemaining: number;
+    isBirthday: boolean;
+    daysUntilBirthday: number;
+    yearStart: string;
+    yearEnd: string;
+  };
+  progress: number;
+  next: {
+    house: number;
+    houseName: string;
+    themes: string;
+    lordOfYear: string;
+  };
+}
+
+function YourYearCard({ data, onExplore }: { data: ProfectionData; onExplore: () => void }) {
+  const { profection, progress } = data;
+  const pct = Math.round(progress * 100);
+  const isTransitionSoon = profection.daysRemaining <= 30;
+  const isVeryClose = profection.daysRemaining <= 7;
+
+  const themeLabel = profection.themes.split("—")[0].trim();
+
+  return (
+    <div className="your-year-card">
+      <div className="your-year-header">
+        <span className="your-year-eyebrow">YOUR YEAR · Age {profection.age}</span>
+      </div>
+
+      <div className="your-year-house">
+        {profection.houseName.charAt(0).toUpperCase() + profection.houseName.slice(1)} Year
+      </div>
+
+      <div className="your-year-themes">{themeLabel}</div>
+
+      <div className="your-year-lord">
+        Lord of the Year: <strong>{profection.lordOfYear}</strong>
+      </div>
+
+      <div className="your-year-progress-wrap">
+        <div className="your-year-progress-track">
+          <div
+            className={`your-year-progress-fill${isVeryClose ? " near-end" : ""}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className={`your-year-days${isTransitionSoon ? " soon" : ""}`}>
+          {profection.daysRemaining === 1
+            ? "1 day left"
+            : `${profection.daysRemaining} days left`}
+        </span>
+      </div>
+
+      {isVeryClose && data.next && (
+        <div className="your-year-upcoming">
+          Next: {data.next.houseName} year — {data.next.themes.split("—")[0].trim().toLowerCase()}
+        </div>
+      )}
+
+      <button className="your-year-cta" onClick={onExplore}>
+        Explore this year in chat →
+      </button>
+    </div>
+  );
+}
+
+function BirthdayBanner({ daysUntil, nextHouseName, nextThemes }: {
+  daysUntil: number;
+  nextHouseName: string;
+  nextThemes: string;
+}) {
+  const themeSnippet = nextThemes.split("—")[0].trim().toLowerCase();
+  return (
+    <div className="birthday-banner">
+      <span className="birthday-banner-icon">✦</span>
+      <span className="birthday-banner-text">
+        {daysUntil === 0
+          ? `Happy birthday — you're entering your ${nextHouseName} year. ${nextThemes.split("—")[0].trim()} ahead.`
+          : `Your new year begins in ${daysUntil} ${daysUntil === 1 ? "day" : "days"} — you'll be entering your ${nextHouseName} year. ${themeSnippet.charAt(0).toUpperCase() + themeSnippet.slice(1)} ahead.`}
+      </span>
+    </div>
+  );
+}
+
+function BirthdayReadingCard({ reading }: { reading: string }) {
+  return (
+    <div className="birthday-reading-card">
+      <div className="birthday-reading-header">
+        <span className="birthday-reading-eyebrow">✦ BIRTHDAY READING</span>
+      </div>
+      <div className="birthday-reading-content">
+        {reading.split("\n\n").map((para, i) => (
+          <p key={i} style={{ marginBottom: "1em", lineHeight: "1.75" }}>{para}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BriefingPage() {
   const todayStr = toLocalDateString(new Date());
 
@@ -27,8 +134,12 @@ export default function BriefingPage() {
   const [error, setError] = useState<string | null>(null);
   const [onboardingToday, setOnboardingToday] = useState(false);
 
+  const [profectionData, setProfectionData] = useState<ProfectionData | null>(null);
+  const [birthdayReading, setBirthdayReading] = useState<string | null>(null);
+
   const isToday = currentDate === todayStr;
 
+  // Load the briefing text
   const loadBriefing = useCallback((date: string) => {
     setLoading(true);
     setBriefing(null);
@@ -56,12 +167,45 @@ export default function BriefingPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Load profection data (only for today)
+  useEffect(() => {
+    if (!isToday) return;
+    fetch("/api/profection/current")
+      .then(res => res.json())
+      .then(data => {
+        if (data.profection) setProfectionData(data);
+      })
+      .catch(() => {});
+  }, [isToday]);
+
+  // Load birthday reading if today is the birthday
+  useEffect(() => {
+    if (!isToday) return;
+    if (!profectionData?.profection?.isBirthday) return;
+    fetch("/api/profection/birthday")
+      .then(res => res.json())
+      .then(data => {
+        if (data.reading) setBirthdayReading(data.reading);
+      })
+      .catch(() => {});
+  }, [isToday, profectionData?.profection?.isBirthday]);
+
   useEffect(() => {
     loadBriefing(currentDate);
   }, [currentDate, loadBriefing]);
 
   const goToPrev = () => setCurrentDate(d => addDays(d, -1));
   const goToNext = () => setCurrentDate(d => addDays(d, 1));
+
+  const handleExploreYear = () => {
+    window.location.href = "/chat?new=true&source=year";
+  };
+
+  const showBirthdayBanner =
+    isToday &&
+    profectionData &&
+    !profectionData.profection.isBirthday &&
+    profectionData.profection.daysRemaining <= 7;
 
   return (
     <div className="briefing-screen screen">
@@ -90,6 +234,20 @@ export default function BriefingPage() {
         </div>
 
         <h1 className="briefing-title" style={{ textAlign: "center" }}>Your personal sky report</h1>
+
+        {/* Birthday transition banner */}
+        {showBirthdayBanner && profectionData && (
+          <BirthdayBanner
+            daysUntil={profectionData.profection.daysRemaining}
+            nextHouseName={profectionData.next.houseName}
+            nextThemes={profectionData.next.themes}
+          />
+        )}
+
+        {/* Birthday reading (on birthday) */}
+        {isToday && birthdayReading && (
+          <BirthdayReadingCard reading={birthdayReading} />
+        )}
 
         {loading && (
           <div className="briefing-content">
@@ -136,6 +294,12 @@ export default function BriefingPage() {
             )}
           </>
         )}
+
+        {/* Your Year card — always shown on today tab */}
+        {isToday && profectionData && (
+          <YourYearCard data={profectionData} onExplore={handleExploreYear} />
+        )}
+
       </div>
     </div>
   );

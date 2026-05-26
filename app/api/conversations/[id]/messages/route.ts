@@ -126,6 +126,9 @@ export async function POST(
   const chart = chartRow.chart_data as NatalChart;
   const userName = user.email?.split("@")[0] ?? "friend";
   const birthInfo = `${chartRow.birth_date} at ${chartRow.birth_time} in ${chartRow.birth_location}`;
+  const birthDate = chartRow.birth_date
+    ? new Date(chartRow.birth_date + "T12:00:00")
+    : undefined;
 
   // Load memories
   const { data: memoryRows } = await supabase
@@ -156,10 +159,10 @@ export async function POST(
         report
       );
     } else {
-      systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
+      systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate);
     }
   } else {
-    systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories);
+    systemPrompt = buildSystemPrompt(chart, userName, birthInfo, memories, birthDate);
   }
 
   // Cap history to the last 12 messages to bound input token cost on long conversations

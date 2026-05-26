@@ -31,9 +31,12 @@ export async function POST(request: Request) {
     const userName = user.email?.split("@")[0] ?? "friend";
     const birthInfo = `${chartRow.birth_date} at ${chartRow.birth_time} in ${chartRow.birth_location}`;
     const focusContext = situation ? `${focus} — ${situation}` : focus;
+    const birthDate = chartRow.birth_date
+      ? new Date((chartRow.birth_date as string) + "T12:00:00")
+      : undefined;
 
     // Build first message prompt
-    const prompt = buildFirstMessagePrompt(chart, userName, birthInfo, focusContext);
+    const prompt = buildFirstMessagePrompt(chart, userName, birthInfo, focusContext, birthDate);
 
     // Generate first message with Claude
     const { text } = await generateText({

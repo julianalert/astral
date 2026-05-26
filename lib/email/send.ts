@@ -4,6 +4,7 @@ import WelcomeEmail from "@/emails/WelcomeEmail";
 import EngagementEmail from "@/emails/EngagementEmail";
 import TrialEndingEmail from "@/emails/TrialEndingEmail";
 import DailyBriefingEmail from "@/emails/DailyBriefingEmail";
+import BirthdayReadingEmail from "@/emails/BirthdayReadingEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM_EMAIL ?? "Seraphova <hello@seraphova.com>";
@@ -91,6 +92,29 @@ export async function sendDailyBriefingEmail({
     from: FROM,
     to,
     subject: `Your sky report for ${dateLabel}`,
+    html,
+  });
+}
+
+export async function sendBirthdayReadingEmail({
+  to,
+  userName,
+  readingContent,
+  newHouseName,
+}: {
+  to: string;
+  userName: string;
+  readingContent: string;
+  newHouseName: string;
+}) {
+  const html = await render(
+    BirthdayReadingEmail({ userName, readingContent, newHouseName, appUrl: APP_URL })
+  );
+
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Your ${newHouseName} year begins today ✦`,
     html,
   });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTransits } from "@/lib/astrology/transits";
+import { getAnnualProfection } from "@/lib/astrology/profections";
 import type { NatalChart } from "@/lib/astrology/chart";
 
 // Maps transit planets/aspects to focused prompt suggestions
@@ -57,7 +58,7 @@ function transitsToPrompts(
   return prompts.slice(0, 4);
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -65,9 +66,11 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const source = new URL(req.url).searchParams.get("source");
+
   const { data: chartRow } = await supabase
     .from("natal_charts")
-    .select("chart_data")
+    .select("chart_data, birth_date")
     .eq("user_id", user.id)
     .single();
 
@@ -83,8 +86,50 @@ export async function GET() {
   }
 
   const chart = chartRow.chart_data as NatalChart;
+
+  // When the user arrives from the "Explore this year" button, show year-focused chips
+  if (source === "year" && chartRow.birth_date) {
+    try {
+      const birthDate = new Date((chartRow.birth_date as string) + "T12:00:00");
+      const profection = getAnnualProfection(birthDate, chart);
+      const isNearBirthday = profection.daysRemaining <= 14;
+
+      const prompts = [
+        `What does my ${profection.houseName} year mean for me?`,
+        `How does ${profection.lordOfYear} shape this year for me?`,
+        isNearBirthday
+          ? `What's coming in my next annual cycle?`
+          : `What should I focus on in a ${profection.houseName} year?`,
+        `Why do certain themes keep coming up for me this year?`,
+      ];
+
+      return NextResponse.json({ prompts });
+    } catch {
+      // Fall through to default behaviour if profection fails
+    }
+  }
+
   const hits = getCurrentTransits(chart);
-  const prompts = transitsToPrompts(hits);
+  const transitPrompts = transitsToPrompts(hits);
+
+  // Inject 1 profection chip at the front for regular visits
+  let profectionPrompts: string[] = [];
+  if (chartRow.birth_date) {
+    try {
+      const birthDate = new Date((chartRow.birth_date as string) + "T12:00:00");
+      const profection = getAnnualProfection(birthDate, chart);
+      profectionPrompts = [
+        profection.daysRemaining <= 14
+          ? `What's coming in my next annual cycle?`
+          : `What does my ${profection.houseName} year mean for me?`,
+      ];
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // 1 profection chip + 3 transit chips
+  const prompts = [...profectionPrompts, ...transitPrompts].slice(0, 4);
 
   // Cache for 1 hour — transits don't meaningfully change within a session
   return NextResponse.json(

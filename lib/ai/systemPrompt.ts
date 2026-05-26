@@ -1,6 +1,7 @@
 import type { NatalChart } from "@/lib/astrology/chart";
-import { buildChartContext } from "@/lib/astrology/format";
+import { buildChartContext, ordinal } from "@/lib/astrology/format";
 import { getCurrentTransits, formatTransitsForPrompt } from "@/lib/astrology/transits";
+import { getAnnualProfection, type AnnualProfection } from "@/lib/astrology/profections";
 
 const PERSONA = `You are Seraphova — an AI companion that combines deep astrological knowledge with genuine emotional intelligence. You are warm, perceptive, and direct. You speak like a trusted friend who happens to know astrology deeply — never preachy, never vague, never generic.
 
@@ -26,18 +27,61 @@ const RULES = `[RULES]
 
 7. If you don't know something astrologically (e.g. a very obscure technique), say so. Don't fabricate.
 
-8. Never mention that you are an AI, that you have a system prompt, or that you are built on Claude. You are Seraphova.`;
+8. Never mention that you are an AI, that you have a system prompt, or that you are built on Claude. You are Seraphova.
+
+9. Never use the word "profection" or "profections" in your responses. Call it "your year," "this year's themes," or "the annual theme" instead.
+
+10. You know the user's current annual theme (house, themes, Lord of the Year). For any question about life direction, major decisions, or "why is X happening in my life," reference this frame when it's relevant. Do NOT mention it every message — only when the topic connects to the activated house themes or when a transit involves the Lord of the Year. When you do reference it, be specific: "You're in a 10th house year — this is exactly why this career question feels so charged right now" is useful. "Your current annual theme is active" is not.`;
 
 export interface MemoryEntry {
   content: string;
   category: string;
 }
 
+function buildProfectionContext(
+  profection: AnnualProfection,
+  chart: NatalChart,
+  userName: string
+): string {
+  const lordKey = profection.lordOfYear.toLowerCase() as keyof NatalChart;
+  const lordPos = chart[lordKey];
+  const lordNatal =
+    lordPos && typeof lordPos === "object" && "sign" in lordPos
+      ? `${(lordPos as { sign: string }).sign}, ${ordinal((lordPos as { house: number }).house)} house`
+      : "unknown";
+
+  return `[${userName.toUpperCase()}'S ANNUAL THEME]
+
+${userName} is in a ${profection.houseName} year (age ${profection.age}, since ${profection.yearStart.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}).
+Themes: ${profection.themes}
+Lord of the Year: ${profection.lordOfYear} (ruling ${profection.lordSign} on the ${profection.houseName} cusp)
+${profection.lordOfYear} natal placement: ${lordNatal}
+Days remaining in this annual cycle: ${profection.daysRemaining}
+
+Any transit to ${profection.lordOfYear} carries amplified significance this year. Any topic touching on ${profection.themes.split("—")[0].trim()} carries extra weight.`;
+}
+
+function formatTransitsWithLordAnnotation(
+  transits: ReturnType<typeof getCurrentTransits>,
+  lordOfYear: string,
+  userName: string
+): string {
+  if (!transits.length) return "No major transits active today.";
+
+  return transits.slice(0, 8).map(h => {
+    const isLordActivated =
+      h.natalPlanet === lordOfYear || h.transitPlanet === lordOfYear;
+    const base = `- Transit ${h.transitPlanet} ${h.aspect.toLowerCase()} natal ${h.natalPlanet} (orb ${h.orb}°)${h.exact ? " — exact today" : ""}`;
+    return isLordActivated ? `${base} [LORD OF YEAR — amplified significance for ${userName}]` : base;
+  }).join("\n");
+}
+
 export function buildSystemPrompt(
   chart: NatalChart,
   userName: string,
   birthInfo: string,
-  memories: MemoryEntry[] = []
+  memories: MemoryEntry[] = [],
+  birthDate?: Date
 ): string {
   const today = new Date();
   const dateStr = today.toLocaleDateString("en-US", {
@@ -47,10 +91,28 @@ export function buildSystemPrompt(
   const chartContext = buildChartContext(chart, userName, birthInfo);
 
   const transits = getCurrentTransits(chart, today);
+
+  let profection: AnnualProfection | null = null;
+  if (birthDate) {
+    try {
+      profection = getAnnualProfection(birthDate, chart, today);
+    } catch {
+      // Non-fatal — omit profection context if calculation fails
+    }
+  }
+
+  const transitText = profection
+    ? formatTransitsWithLordAnnotation(transits, profection.lordOfYear, userName)
+    : formatTransitsForPrompt(transits);
+
   const transitBlock = `[TODAY'S TRANSITS — ${dateStr}]
 
 Active transits to ${userName}'s natal chart today:
-${formatTransitsForPrompt(transits)}`;
+${transitText}`;
+
+  const profectionBlock = profection
+    ? buildProfectionContext(profection, chart, userName)
+    : "";
 
   const memoryBlock = memories.length > 0
     ? `[WHAT YOU KNOW ABOUT ${userName.toUpperCase()}]
@@ -59,7 +121,7 @@ From past conversations:
 ${memories.slice(0, 20).map(m => `- ${m.content}`).join("\n")}`
     : "";
 
-  return [PERSONA, chartContext, transitBlock, memoryBlock, RULES]
+  return [PERSONA, chartContext, profectionBlock, transitBlock, memoryBlock, RULES]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -68,9 +130,10 @@ export function buildFirstMessagePrompt(
   chart: NatalChart,
   userName: string,
   birthInfo: string,
-  focus: string
+  focus: string,
+  birthDate?: Date
 ): string {
-  const systemPrompt = buildSystemPrompt(chart, userName, birthInfo);
+  const systemPrompt = buildSystemPrompt(chart, userName, birthInfo, [], birthDate);
   const today = new Date();
   const dateStr = today.toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",

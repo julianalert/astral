@@ -57,8 +57,9 @@ export default function ChatPage() {
       }
 
       // Load secondary data in the background — don't block chat rendering
+      const source = searchParams.get("source") ?? "";
       Promise.all([
-        fetch("/api/chat/suggested-prompts"),
+        fetch(`/api/chat/suggested-prompts${source ? `?source=${source}` : ""}`),
         fetch("/api/briefing/today"),
         fetch("/api/relationships"),
       ]).then(async ([promptsRes, briefingRes, relRes]) => {
