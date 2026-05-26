@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useDrawer } from "@/lib/useDrawer";
 
 const TABS = [
-  { id: "briefing",      label: "Today",  href: "/briefing" },
-  { id: "chat",          label: "Chat",   href: "/chat" },
+  { id: "briefing",      label: "Today",      href: "/briefing" },
+  { id: "year",          label: "Your Year",  href: "/year" },
+  { id: "chat",          label: "Chat",       href: "/chat" },
   { id: "relationships", label: "Relationships", href: "/relationships" },
 ];
 
@@ -62,7 +63,7 @@ export default function AppNav({ userEmail }: { userEmail: string }) {
           >
             <BurgerIcon />
           </button>
-          <Link href="/chat" className="nav-logo">
+          <Link href="/briefing" className="nav-logo">
             <span>✦</span> SERAPHOVA
           </Link>
         </div>

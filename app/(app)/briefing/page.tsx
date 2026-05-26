@@ -20,76 +20,15 @@ function formatDate(dateStr: string) {
 
 interface ProfectionData {
   profection: {
-    house: number;
     houseName: string;
     themes: string;
-    lordOfYear: string;
-    lordSign: string;
-    age: number;
     daysRemaining: number;
     isBirthday: boolean;
-    daysUntilBirthday: number;
-    yearStart: string;
-    yearEnd: string;
   };
-  progress: number;
   next: {
-    house: number;
     houseName: string;
     themes: string;
-    lordOfYear: string;
   };
-}
-
-function YourYearCard({ data, onExplore }: { data: ProfectionData; onExplore: () => void }) {
-  const { profection, progress } = data;
-  const pct = Math.round(progress * 100);
-  const isTransitionSoon = profection.daysRemaining <= 30;
-  const isVeryClose = profection.daysRemaining <= 7;
-
-  const themeLabel = profection.themes.split("—")[0].trim();
-
-  return (
-    <div className="your-year-card">
-      <div className="your-year-header">
-        <span className="your-year-eyebrow">YOUR YEAR · Age {profection.age}</span>
-      </div>
-
-      <div className="your-year-house">
-        {profection.houseName.charAt(0).toUpperCase() + profection.houseName.slice(1)} Year
-      </div>
-
-      <div className="your-year-themes">{themeLabel}</div>
-
-      <div className="your-year-lord">
-        Lord of the Year: <strong>{profection.lordOfYear}</strong>
-      </div>
-
-      <div className="your-year-progress-wrap">
-        <div className="your-year-progress-track">
-          <div
-            className={`your-year-progress-fill${isVeryClose ? " near-end" : ""}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span className={`your-year-days${isTransitionSoon ? " soon" : ""}`}>
-          {profection.daysRemaining === 1
-            ? "1 day left"
-            : `${profection.daysRemaining} days left`}
-        </span>
-      </div>
-
-      {isVeryClose && data.next && (
-        <div className="your-year-upcoming">
-          Next: {data.next.houseName} year — {data.next.themes.split("—")[0].trim().toLowerCase()}
-        </div>
-      )}
-
-      <button className="your-year-cta" onClick={onExplore}>
-        Explore this year in chat →
-      </button>
-    </div>
-  );
 }
 
 function BirthdayBanner({ daysUntil, nextHouseName, nextThemes }: {
@@ -139,7 +78,6 @@ export default function BriefingPage() {
 
   const isToday = currentDate === todayStr;
 
-  // Load the briefing text
   const loadBriefing = useCallback((date: string) => {
     setLoading(true);
     setBriefing(null);
@@ -167,14 +105,12 @@ export default function BriefingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Load profection data (only for today)
+  // Load profection for birthday banner only
   useEffect(() => {
     if (!isToday) return;
     fetch("/api/profection/current")
       .then(res => res.json())
-      .then(data => {
-        if (data.profection) setProfectionData(data);
-      })
+      .then(data => { if (data.profection) setProfectionData(data); })
       .catch(() => {});
   }, [isToday]);
 
@@ -184,9 +120,7 @@ export default function BriefingPage() {
     if (!profectionData?.profection?.isBirthday) return;
     fetch("/api/profection/birthday")
       .then(res => res.json())
-      .then(data => {
-        if (data.reading) setBirthdayReading(data.reading);
-      })
+      .then(data => { if (data.reading) setBirthdayReading(data.reading); })
       .catch(() => {});
   }, [isToday, profectionData?.profection?.isBirthday]);
 
@@ -196,10 +130,6 @@ export default function BriefingPage() {
 
   const goToPrev = () => setCurrentDate(d => addDays(d, -1));
   const goToNext = () => setCurrentDate(d => addDays(d, 1));
-
-  const handleExploreYear = () => {
-    window.location.href = "/chat?new=true&source=year";
-  };
 
   const showBirthdayBanner =
     isToday &&
@@ -293,11 +223,6 @@ export default function BriefingPage() {
               </div>
             )}
           </>
-        )}
-
-        {/* Your Year card — always shown on today tab */}
-        {isToday && profectionData && (
-          <YourYearCard data={profectionData} onExplore={handleExploreYear} />
         )}
 
       </div>

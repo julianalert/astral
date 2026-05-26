@@ -366,6 +366,10 @@ select.input option { background:var(--void); }
 .transit-pill-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; }
 .briefing-cta { display:flex; gap:10px; }
 
+/* ── YEAR PAGE ── */
+.year-hero-card { border-color:rgba(201,168,76,0.15); }
+.year-generate-cta { border-style:dashed; }
+
 /* ── YOUR YEAR CARD ── */
 .your-year-card { margin-top:28px; padding:24px; background:var(--card); border:1px solid var(--border); border-radius:var(--r2); }
 .your-year-header { margin-bottom:10px; }
