@@ -219,27 +219,18 @@ export async function POST(
   // Cap history to the last 12 messages to bound input token cost on long conversations
   const recentMessages = incomingMessages.slice(-12);
 
-  // Build message history for Claude — system prompt first with cache control so
-  // Anthropic caches it across turns (saves ~90% on those input tokens per day).
-  const aiMessages = [
-    {
-      role: "system" as const,
-      content: systemPrompt,
-      providerOptions: {
-        anthropic: { cacheControl: { type: "ephemeral" } },
-      },
-    },
-    ...recentMessages
-      .filter(m => m.role === "user" || m.role === "assistant")
-      .map(m => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-  ];
+  const aiMessages = recentMessages
+    .filter(m => m.role === "user" || m.role === "assistant")
+    .map(m => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
-  // Stream from Claude
+  // Stream from Claude — system passed separately (not in messages array) so the
+  // AI SDK can safely cache it and avoids the prompt-injection warning.
   const result = await streamText({
     model: anthropic("claude-sonnet-4-6"),
+    system: systemPrompt,
     messages: aiMessages,
     maxOutputTokens: 600,
     onFinish: async ({ text }) => {

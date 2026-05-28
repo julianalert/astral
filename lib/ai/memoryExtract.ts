@@ -45,7 +45,7 @@ export async function extractAndStoreMemories(
 
   try {
     const { text } = await generateText({
-      model: anthropic("claude-haiku-4-5"),
+      model: anthropic("claude-sonnet-4-6"),
       system: EXTRACTION_PROMPT,
       prompt: `Conversation:\n\n${conversationText}`,
       maxOutputTokens: 500,
