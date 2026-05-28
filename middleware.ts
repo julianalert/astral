@@ -32,9 +32,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require auth
-  const publicRoutes = ["/login", "/signup", "/auth/callback"];
+  const publicRoutes = ["/login", "/signup", "/callback"];
   const isPublic =
-    publicRoutes.some((r) => pathname === r || pathname.startsWith("/auth/")) ||
+    publicRoutes.some((r) => pathname === r) ||
     pathname.startsWith("/api/cron/");
 
   if (!user && !isPublic) {
