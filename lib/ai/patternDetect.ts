@@ -40,7 +40,7 @@ function extractKeywords(text: string): Set<string> {
 
 function overlap(a: Set<string>, b: Set<string>): number {
   let count = 0
-  for (const w of a) if (b.has(w)) count++
+  a.forEach(w => { if (b.has(w)) count++ })
   return count
 }
 

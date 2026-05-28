@@ -36,7 +36,7 @@ Write 3–5 sentences. Be specific to their chart — not generic. Identify the 
 Tone: warm, intelligent, like a trusted friend who happens to know your chart by heart. Not a horoscope. Not a fortune cookie. No greeting — start directly with the insight.`;
 
   const { text } = await generateText({
-    model: anthropic("claude-haiku-3-5"),
+    model: anthropic("claude-sonnet-4-6"),
     prompt,
     maxOutputTokens: 1024,
   });

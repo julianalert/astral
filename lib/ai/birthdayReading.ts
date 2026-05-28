@@ -41,7 +41,7 @@ End with one concrete thing to pay attention to in this new year.
 No salutation. Start directly with the insight. Do not use the phrase "annual profection" or technical jargon.`;
 
   const { text } = await generateText({
-    model: anthropic("claude-haiku-3-5"),
+    model: anthropic("claude-haiku-4-5"),
     prompt,
     maxOutputTokens: 800,
   });
