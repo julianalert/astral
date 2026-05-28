@@ -211,7 +211,11 @@ export default function YearPage() {
               ))}
             </div>
 
-            <div className="briefing-cta" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
+            <p style={{ fontSize: "12px", color: "var(--muted2)", textAlign: "center", marginBottom: "16px" }}>
+              This reading is saved and will refresh automatically when your next annual cycle begins.
+            </p>
+
+            <div className="briefing-cta" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
               <button
                 className="btn btn-outline"
                 style={{ fontSize: "13px", padding: "9px 18px" }}
@@ -224,10 +228,6 @@ export default function YearPage() {
                 Explore in chat →
               </button>
             </div>
-
-            <p style={{ fontSize: "12px", color: "var(--muted2)", textAlign: "center" }}>
-              This reading is saved and will refresh automatically when your next annual cycle begins.
-            </p>
           </>
         )}
 
