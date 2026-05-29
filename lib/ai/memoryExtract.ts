@@ -1,6 +1,6 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 interface RawMemory {
   content: string;
@@ -71,7 +71,7 @@ export async function extractAndStoreMemories(
   if (!extracted.length) return;
 
   // Load existing memories to avoid near-duplicates (simple content dedup)
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const { data: existing } = await supabase
     .from("memories")
     .select("content")

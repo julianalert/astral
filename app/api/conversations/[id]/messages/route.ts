@@ -240,15 +240,16 @@ export async function POST(
         content: text,
       });
 
-      // Throttle memory extraction: fire at message 5, then every 6 messages
-      // (i.e. every ~3 turns). Conversations are always odd-numbered
-      // (1 AI greeting + pairs of user/AI), so this fires at 5, 11, 17, 23…
-      const { count: totalCount } = await supabase
+      // Fire memory extraction after the 2nd user message, then every 3 user
+      // messages (i.e. every ~3 turns). Counting user messages avoids parity
+      // issues that arise with or without an AI greeting at the start.
+      const { count: userMsgCount } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
-        .eq("conversation_id", params.id);
+        .eq("conversation_id", params.id)
+        .eq("role", "user");
 
-      if (totalCount && totalCount >= 5 && (totalCount - 5) % 6 === 0) {
+      if (userMsgCount && userMsgCount >= 2 && (userMsgCount - 2) % 3 === 0) {
         const { data: allMsgs } = await supabase
           .from("messages")
           .select("role, content")
